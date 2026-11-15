@@ -532,7 +532,7 @@ const state = {
   mode: 'connecting', canWrite: true, simOffline: false,
   records: [], localRecs: store.get('sheq-local', []), outbox: store.get('sheq-outbox', []),
   crewFilter: 'all', crewQuery: '', scanTask: 'role', actFilter: 'site', newIds: new Set(),
-  att: {}, tok: store.get('hsoc-tok', ''), authRole: store.get('hsoc-role', '') || 'worker',
+  att: (() => { const c = store.get('hsoc-att', null), d = new Date(), day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); return c && c.day === day ? c.a : {}; })(), tok: store.get('hsoc-tok', ''), authRole: store.get('hsoc-role', '') || 'worker',
 };
 const isSup = () => !SUPA || state.authRole === 'supervisor' || state.authRole === 'admin';
 const isAdmin = () => !!SUPA && state.authRole === 'admin';
@@ -601,7 +601,7 @@ async function refreshBoot() {
 }
 async function loadAtt() {
   try { const a = await rpc('hs_attendance', { day: todayISO() }); if (a && typeof a === 'object') {
-    const sig = JSON.stringify(a); if (sig === state._attSig) return; state._attSig = sig; state.att = a;
+    const sig = JSON.stringify(a); if (sig === state._attSig) return; state._attSig = sig; state.att = a; store.set('hsoc-att', { day: todayISO(), a });
     if (!isSup() && ME.id && !(state.att[state.site] || []).some(x => x.id === ME.id)) { const mine = Object.keys(state.att).find(k => SITES[k] && state.att[k].some(x => x.id === ME.id)); if (mine) state.site = mine; }
     onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } catch {}
 }
@@ -1729,4 +1729,4 @@ setTimeout(() => { if (state.mode === 'connecting') setMode('local'); if (DATA) 
 window.__hs = { loadFeed: () => loadFeed(), refreshBoot: () => refreshBoot(), people: () => PEOPLE, open: s => { state.sheet = s; renderSheet(); } };
 })();
 </script>
-<script>if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function(){});</script></body></html>
+<script>if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(function(){});</script></body></html>
