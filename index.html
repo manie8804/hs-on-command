@@ -565,6 +565,7 @@ async function rpc(fn, args) {
 function afterData() {
   state.needCode = false; state.codeErr = ''; noteKnownRequests();
   if (!ME.id && !setMe(store.get('hsoc-me', ''))) state.needSignIn = true;
+  if (SUPA && ME.id && !state.needSignIn && !state.tok && !state._pinAsked && roleOf(ME.id) !== 'worker') { state.needPin = true; state._pinAsked = true; }
   render(); startPolling(); flush(); checkTok();
 }
 async function initSupa() {
@@ -593,7 +594,7 @@ async function submitCode(code) {
 function setTok(tok, role) { state.tok = tok || ''; state.authRole = role || 'worker'; store.set('hsoc-tok', state.tok); store.set('hsoc-role', state.authRole); }
 async function checkTok() {
   if (!SUPA || !state.tok || isOffline()) return;
-  try { const w = await rpc('hs_whoami', { tok: state.tok }); if (!w || w.pid !== ME.id) setTok('', 'worker'); else setTok(state.tok, w.role); render(); } catch {}
+  try { const w = await rpc('hs_whoami', { tok: state.tok }); if (!w || w.pid !== ME.id) { setTok('', 'worker'); if (roleOf(ME.id) !== 'worker' && !state._pinAsked) { state.needPin = true; state._pinAsked = true; } } else setTok(state.tok, w.role); render(); } catch {}
 }
 async function refreshBoot() {
   try { const b = await rpc('hs_boot', { tok: state.tok || null }); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
