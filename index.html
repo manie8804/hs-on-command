@@ -97,6 +97,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 @keyframes pulse { 50% { opacity: .35; } }
 .iconbtn { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .top .iconbtn:hover { background: var(--chrome-2); }
+.bell { position: relative; }
+.bell .badge { position: absolute; top: 1px; right: -1px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: .66rem; font-weight: 700; display: grid; place-items: center; line-height: 1; border: 2px solid var(--chrome); box-sizing: border-box; }
+.li.unread .t::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 7px; vertical-align: middle; }
+.toggle.card { border-radius: var(--r); }
 .tape { height: 1px; background: var(--chrome-2); }
 .demo { flex: none; display: flex; align-items: center; gap: 10px; padding-block: 8px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: .82rem; color: var(--ink-2); }
 .demo b { color: var(--ink); }
@@ -314,6 +318,7 @@ canvas.pad { width: 100%; height: 190px; background: #fff; border-radius: 12px; 
           <div class="grow"><b>H&amp;S on Command</b><span id="coName">Harambe Technologies</span></div>
         </div>
         <button class="pill" id="syncPill" data-act="menu" aria-label="Connection status"><i></i><span>Connecting</span></button>
+        <button class="iconbtn bell" id="bellBtn" data-act="alerts" aria-label="Notifications" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><b class="badge" id="bellN" hidden></b></button>
         <button class="iconbtn" data-act="menu" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/></svg></button>
       </div>
       <div class="tape"></div>
@@ -384,6 +389,7 @@ const I = {
   pen: '<path d="M4 20l4.2-1 10.4-10.4a2 2 0 0 0-2.8-2.8L5.4 16.2z"/>',
   warn: '<path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/>',
   monitor: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
 };
 const ic = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[name]}</svg>`;
 
@@ -407,6 +413,14 @@ const TASK_DEFS = [
   { id: 'control', name: 'Control room shift', req: ['C01', 'C36', 'C37'] },
 ];
 let ROLES = {}, PEOPLE = [], HIDDEN = new Set(), SITE_LIST = [], REQUESTS = [], APPTS = [], NEEDS = {}, STATIC = {};
+let MEMBERS = [], PERMS = [], EVENTS = [];
+// site teams and the per-site notifications switch
+const siteRow = sid => SITE_LIST.find(x => x.id === sid);
+const siteNotifyOn = sid => (siteRow(sid) || {}).notify !== false;
+const teamOf = sid => MEMBERS.filter(m => m.site === sid);
+const isManager = (sid, pid = ME.id) => !!pid && MEMBERS.some(m => m.site === sid && m.pid === pid && m.role === 'manager');
+const hasPerm = (pid, perm) => PERMS.some(p => p.pid === pid && p.perm === perm);
+const canSwitchNotify = sid => isAdmin() || (isSup() && isManager(sid) && hasPerm(ME.id, 'notify'));
 function addMonths(iso, m) { const d = new Date(iso + 'T00:00:00'); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); }
 function personToCrew(p) {
   const held = {};
@@ -443,6 +457,7 @@ function applyBoot(b) {
   ROLES = Object.fromEntries((b.roles || []).map(r => [r.pid, r]));
   PEOPLE = Array.isArray(b.people) ? b.people : [];
   SITE_LIST = Array.isArray(b.sites) ? b.sites : [];
+  MEMBERS = Array.isArray(b.members) ? b.members : []; PERMS = Array.isArray(b.perms) ? b.perms : [];
   LISTS = b.lists || {}; HIDDEN = new Set(LISTS.hidden || []);
   if (b.static && b.static.letters) STATIC = b.static;
   if (b.static && b.static.company && b.static.company.name) { Object.assign(COMPANY, b.static.company); const cn = document.getElementById('coName'); if (cn) cn.textContent = COMPANY.short || COMPANY.name; }
@@ -568,8 +583,9 @@ function afterData() {
   state.needCode = false; state.codeErr = ''; noteKnownRequests();
   if (!ME.id && !setMe(store.get('hsoc-me', ''))) state.needSignIn = true;
   if (SUPA && ME.id && !state.needSignIn && !state.tok && !state._pinAsked && roleOf(ME.id) !== 'worker') { state.needPin = true; state._pinAsked = true; }
-  render(); startPolling(); flush(); checkTok();
+  render(); startPolling(); flush(); checkTok(); pushSync(); loadActivity(); maybeOpenAlerts();
 }
+function maybeOpenAlerts() { if (state._openAlerts && ME.id && !state.needSignIn && !state.needPin && !state.needCode) { state._openAlerts = false; openAlerts(); } }
 async function initSupa() {
   state.mode = 'supa'; renderPill();
   supaCk = store.get('hsoc-ck', '');
@@ -598,8 +614,101 @@ async function checkTok() {
   if (!SUPA || !state.tok || isOffline()) return;
   try { const w = await rpc('hs_whoami', { tok: state.tok }); if (!w || w.pid !== ME.id) { setTok('', 'worker'); if (roleOf(ME.id) !== 'worker' && !state._pinAsked) { state.needPin = true; state._pinAsked = true; } } else setTok(state.tok, w.role); render(); } catch {}
 }
+/* ================= notifications ================= */
+// The server sends phone notifications (web push). Each phone is switched on once; after that it follows whoever
+// uses the phone. The Safety Manager gets everything, others only their sites and what is meant for them.
+function pushEnv() {
+  if (!SUPA) return 'none';
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  if (ios && !standalone) return 'ios';
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'none';
+  if (Notification.permission === 'denied') return 'blocked';
+  return 'ok';
+}
+async function pushSub() { try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch { return null; } }
+async function pushStatus() {
+  const env = pushEnv(); if (env !== 'ok') return env;
+  const sv = store.get('hsoc-push', null);
+  if (!sv || !sv.want || Notification.permission !== 'granted') return 'off';
+  if (roleOf(ME.id) !== 'worker' && !state.tok) return 'pin';
+  const sub = await pushSub(); return sub && sv.pid === ME.id && sv.endpoint === sub.endpoint ? 'on' : 'off';
+}
+async function refreshPushStatus() {
+  const st = await pushStatus(); if (st === state.push) return;
+  state.push = st;
+  if (state.sheet && ['menu', 'push', 'alerts'].includes(state.sheet.kind)) renderSheet();
+  if (!state.flow && state.tab === 'home' && !state.needSignIn && !state.needPin && !state.needCode) renderMain(true);
+}
+const b64u = v => { v = v.replace(/-/g, '+').replace(/_/g, '/'); v += '='.repeat((4 - v.length % 4) % 4); return Uint8Array.from(atob(v), c => c.charCodeAt(0)); };
+async function pushKey() {
+  let k = await rpc('hs_push_pubkey'); if (k) return k;
+  await rpc('hs_push_init');
+  for (let i = 0; i < 6 && !k; i++) { await new Promise(r => setTimeout(r, 1500)); k = await rpc('hs_push_pubkey'); }
+  return k;
+}
+async function pushOn() {
+  const env = pushEnv(); if (env !== 'ok') return env;
+  if (roleOf(ME.id) !== 'worker' && !state.tok) return 'pin';
+  if (isOffline()) return 'offline';
+  const perm = await Notification.requestPermission(); if (perm !== 'granted') return perm === 'denied' ? 'blocked' : 'off';
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error('no service worker')), 8000))]);
+  const key = await pushKey(); if (!key) return 'nokey';
+  const want = b64u(key);
+  let sub = await reg.pushManager.getSubscription();
+  const have = sub && sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+  if (sub && have && (have.length !== want.length || have.some((v, i) => v !== want[i]))) { try { await sub.unsubscribe(); } catch {} sub = null; }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+  await rpc('hs_push_save', { tok: state.tok || null, me: ME.id, sub: sub.toJSON(), ua: navigator.userAgent.slice(0, 200) });
+  store.set('hsoc-push', { want: true, pid: ME.id, endpoint: sub.endpoint, at: Date.now() }); state.push = 'on';
+  return 'on';
+}
+async function pushOff() {
+  const sub = await pushSub();
+  if (sub) { try { await rpc('hs_push_remove', { endpoint: sub.endpoint }); } catch {} try { await sub.unsubscribe(); } catch {} }
+  store.set('hsoc-push', { want: false }); state.push = 'off';
+}
+// a new user on this phone: stop sending the last person's notifications here until the new person is signed in
+function pushRelease() { const sv = store.get('hsoc-push', null); if (SUPA && sv && sv.endpoint && sv.pid) { rpc('hs_push_remove', { endpoint: sv.endpoint }).catch(() => {}); store.set('hsoc-push', { ...sv, pid: null }); } }
+async function pushSync() {
+  const sv = store.get('hsoc-push', null);
+  if (pushEnv() === 'ok' && sv && sv.want && ME.id && Notification.permission === 'granted' && !isOffline() && !(roleOf(ME.id) !== 'worker' && !state.tok)) {
+    const sub = await pushSub();
+    if (!(sub && sv.pid === ME.id && sv.endpoint === sub.endpoint && Date.now() - (sv.at || 0) < 3 * DAY)) { try { await pushOn(); } catch {} }
+  }
+  await refreshPushStatus();
+}
+async function loadActivity() {
+  if (!SUPA || !supaCk || !ME.id || state.needSignIn || isOffline()) return;
+  try {
+    const ev = await rpc('hs_activity', { tok: state.tok || null, me: ME.id, lim: 80 }); if (!Array.isArray(ev)) return;
+    const sig = (state.tok ? 't' : 'w') + ME.id + ev.map(x => x.id).join(','); if (sig === state._evSig) return; state._evSig = sig; EVENTS = ev;
+    if (state.sheet && state.sheet.kind === 'alerts') { if (EVENTS[0]) store.set(seenKey(), Math.max(+store.get(seenKey(), 0) || 0, EVENTS[0].id)); renderSheet(); }
+    renderBell();
+    // a site created on someone else's phone since this phone last loaded: fetch it now rather than in a minute
+    state._askedSites = state._askedSites || new Set();
+    const unknown = EVENTS.filter(e => e.site && !siteRow(e.site) && !state._askedSites.has(e.site)).map(e => e.site);
+    if (unknown.length) { unknown.forEach(x => state._askedSites.add(x)); refreshBoot(); }
+  } catch {}
+}
+const seenKey = () => 'hsoc-seen-ev-' + (ME.id || '');
+const unreadN = () => { const seen = +store.get(seenKey(), 0) || 0; return EVENTS.filter(e => e.id > seen && e.actor !== ME.id).length; };
+function renderBell() {
+  const b = document.getElementById('bellBtn'); if (!b) return;
+  const show = !!(SUPA && supaCk && ME.id && !state.needSignIn && !state.needCode); b.hidden = !show;
+  const n = show ? unreadN() : 0; const t = document.getElementById('bellN'); t.hidden = !n; t.textContent = n > 9 ? '9+' : String(n);
+  b.setAttribute('aria-label', n ? `Notifications, ${n} new` : 'Notifications');
+  try { if (navigator.setAppBadge) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch {}
+}
+function openAlerts() {
+  state._alertsSeenBefore = +store.get(seenKey(), 0) || 0;
+  if (EVENTS[0]) store.set(seenKey(), Math.max(state._alertsSeenBefore, EVENTS[0].id));
+  state.sheet = { kind: 'alerts' }; renderSheet(); renderBell(); loadActivity(); refreshPushStatus();
+}
+const PUSH_TXT = { on: 'On for this phone', off: 'Off. Tap to turn on', ios: 'Add the app to your home screen first', blocked: 'Blocked in your phone settings', none: 'Not available in this browser', pin: 'Sign in with your PIN to turn on' };
+const EV_ICON = { incident: 'alert', request: 'warn', decision: 'check', sign: 'pen', signed: 'check', person: 'user', cert: 'clip', site: 'home', dsti: 'clip', toolbox: 'talk', inspection: 'clip', check: 'x', notify: 'bell' };
 async function refreshBoot() {
-  try { const b = await rpc('hs_boot', { tok: state.tok || null }); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
+  try { const b = await rpc('hs_boot', { tok: state.tok || null }); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles, b.members, b.perms]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
 }
 async function loadAtt() {
   try { const a = await rpc('hs_attendance', { day: todayISO() }); if (a && typeof a === 'object') {
@@ -630,8 +739,8 @@ function startPolling() {
   if (pollT) return;
   pullRecords();
   pollT = setInterval(() => { if (!document.hidden) pullRecords(); }, 15000);
-  if (SUPA) { loadFeed(); setInterval(() => { if (!document.hidden) loadFeed(); }, 6000); }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { pullRecords(); if (SUPA) loadFeed(); } });
+  if (SUPA) { loadFeed(); setInterval(() => { if (!document.hidden) loadFeed(); }, 6000); setInterval(() => { if (!document.hidden) loadActivity(); }, 20000); }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { pullRecords(); if (SUPA) { loadFeed(); loadActivity(); refreshPushStatus(); } } });
 }
 async function initCaps() {
   if (SUPA) { initSupa(); return; }
@@ -733,7 +842,7 @@ function renderNav() {
 let toastT = null;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
 
-function render() { $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
+function render() { $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
 function viewCode() {
   return `<div class="signin gut">
     <div class="hero"><img src="${LOGO}" alt="${esc(COMPANY.short)}"><h1>H&amp;S on Command</h1><p>Enter your company code. You only do this once on this phone.</p></div>
@@ -764,7 +873,7 @@ async function submitPin(pin) {
   const btn = $('#pinForm button'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
   try {
     const r = await rpc('hs_login', { pid: ME.id, pin: String(pin || '').trim() });
-    if (r && r.token) { setTok(r.token, r.role); state.needPin = false; state.pinErr = ''; render(); toast(r.role === 'admin' ? 'Signed in as Safety Manager' : 'Signed in as supervisor'); return; }
+    if (r && r.token) { setTok(r.token, r.role); state.needPin = false; state.pinErr = ''; render(); state._evSig = ''; pushSync(); loadActivity(); maybeOpenAlerts(); toast(r.role === 'admin' ? 'Signed in as Safety Manager' : 'Signed in as supervisor'); return; }
     state.pinErr = { wrong: 'That PIN is not right. After 5 wrong tries the account locks for 15 minutes.', locked: 'Too many wrong tries. Wait 15 minutes, or ask the Safety Manager to set a new PIN.', nopin: 'Your PIN has not been set yet. Ask the Safety Manager. You can carry on with worker access.', worker: 'You are not set up as a supervisor. Carry on with worker access.' }[r && r.error] || 'Could not sign in. Try again.';
   } catch { state.pinErr = 'Could not reach the server. Check your signal and try again.'; }
   render();
@@ -836,12 +945,13 @@ function viewHome() {
   const todays = todayRecs(state.site); const daily = dailyList(state.site);
   return `<div class="page gut">
     <div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${greet}, ${esc(ME.name.split(' ')[0])}</h1></div>
+    ${pushPrompt()}
     <section class="sitecard">
       <div class="row" style="align-items:flex-start">
-        <div class="grow"><p class="eyebrow">${SUPA ? 'Your site today' : 'Your team today'}</p><h2>${esc(site.name)}</h2><p class="sub">${esc(site.kind)} · ${crew.length} ${SUPA ? 'signed in today' : 'people'}</p></div>
+        <div class="grow"><p class="eyebrow">${SUPA ? 'Your site today' : 'Your team today'}</p><h2>${esc(site.name)}</h2><p class="sub">${esc(site.kind)} · ${crew.length} ${SUPA ? 'signed in today' : 'people'}${SUPA && site.id && !siteNotifyOn(site.id) ? ' · notifications off' : ''}</p></div>
         <button class="btn sm switch" data-act="switchSite">Switch</button>
       </div>
-      ${SUPA && isSup() ? `<div class="rowbtns"><button class="btn sm switch" data-act="signInSheet">${ic('plus')}Sign people in</button><button class="btn sm switch" data-act="addPersonSheet">${ic('user')}Add new person</button></div>` : ''}
+      ${SUPA && isSup() ? `<div class="rowbtns"><button class="btn sm switch" data-act="signInSheet">${ic('plus')}Sign people in</button><button class="btn sm switch" data-act="addPersonSheet">${ic('user')}Add new person</button>${state.site ? `<button class="btn sm switch" data-act="teamSheet">${ic('bell')}Site team</button>` : ''}</div>` : ''}
       <div>${barHTML(r)}</div>
       <div class="cover">
         <div><b class="num">${fa}</b><span>First aiders · need ${faNeed} (1 per 50 workers)</span></div>
@@ -1065,6 +1175,9 @@ function renderSheet() {
   if (s.kind === 'record') ({ title, body } = sheetRecord(s));
   if (s.kind === 'qrcards') ({ title, body } = sheetQrCards());
   if (s.kind === 'menu') ({ title, body } = sheetMenu());
+  if (s.kind === 'alerts') ({ title, body } = sheetAlerts());
+  if (s.kind === 'push') ({ title, body } = sheetPush(s));
+  if (s.kind === 'team') ({ title, body } = sheetTeam(s));
   if (s.kind === 'site') ({ title, body } = sheetSite());
   if (s.kind === 'signin') ({ title, body } = sheetSignIn());
   if (s.kind === 'addPerson') ({ title, body } = sheetAddPerson(s));
@@ -1148,6 +1261,7 @@ function sheetMenu() {
     <div class="card"><p class="eyebrow">Connection</p><p style="margin-top:4px">${esc(status)}</p></div>
     <div class="list">
       <div class="li" style="flex-direction:column;align-items:stretch;gap:8px"><b>Appearance</b><div class="seg" role="group" aria-label="Appearance">${[['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<button data-act="setTheme" data-v="${v}" class="${(store.get('hsoc-theme', 'auto') || 'auto') === v ? 'on' : ''}" aria-pressed="${(store.get('hsoc-theme', 'auto') || 'auto') === v}">${l}</button>`).join('')}</div><span class="s muted small">Automatic follows your phone’s setting.</span></div>
+      ${SUPA ? `<button class="li" data-act="pushSheet"><span class="grow"><b>Notifications</b><span class="s" style="display:block">${esc(PUSH_TXT[state.push || 'off'] || '')}</span></span>${state.push === 'on' ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</button>` : ''}
       <button class="toggle" data-act="simOffline"><span class="grow"><b>Simulate no signal</b><span class="s muted small" style="display:block">For testing: log something, then switch this off and watch it send.</span></span><span class="sw ${state.simOffline ? 'on' : ''}" aria-hidden="true"></span></button>
       ${state.mode === 'local' || state.mode === 'supa' ? `<button class="li" data-act="changeUser"><span class="grow"><b>Change user</b><span class="s" style="display:block">Now: ${esc(ME.name)}</span></span></button>` : ''}
       <button class="li" data-act="switchSite"><span class="grow"><b>${SUPA ? 'Switch site' : 'Switch team or project'}</b><span class="s" style="display:block">Now: ${esc(curSite().name)}</span></span></button>
@@ -1155,6 +1269,45 @@ function sheetMenu() {
       ${isAdmin() ? `<button class="li" data-act="settings"><span class="grow"><b>Settings</b><span class="s" style="display:block">Supervisors and PINs, people added on site, lists, company code</span></span></button>` : ''}
     </div>
     <div class="card"><p class="eyebrow">Signed in as</p><p style="margin-top:4px"><b>${esc(ME.name)}</b>${ME.role ? ' · ' + esc(ME.role) : ''}, ${esc(COMPANY.name)}</p>${SUPA ? `<p style="margin-top:4px"><span class="chip ${isSup() ? 'good' : ''}">${state.authRole === 'admin' ? 'Safety Manager access' : state.authRole === 'supervisor' ? 'Supervisor access' : 'Worker access'}</span></p>` : ''}<p class="muted small" style="margin-top:8px">Staff and certificate dates come from the H&amp;S on Command platform as at ${esc(fmtDate(DATA.asOf))}. This is a test version: anything you log here is seen by everyone using the app.</p></div>` };
+}
+function sheetAlerts() {
+  const before = state._alertsSeenBefore || 0; const st = state.push || 'off';
+  const pushRow = SUPA && !['on', 'none'].includes(st) ? `<div class="list"><button class="li" data-act="pushSheet"><span class="grow"><b>Notifications are off on this phone</b><span class="s" style="display:block">${esc(PUSH_TXT[st] || '')}</span></span><span class="chip warn">Turn on</span></button></div>` : '';
+  return { title: 'Notifications', body: `<p class="muted small">${isAdmin() ? 'You see everything that happens on every site.' : 'What happens on the sites you are on, and anything meant for you.'}</p>${pushRow}
+    ${EVENTS.length ? `<div class="list">${EVENTS.map(e => `<button class="li ${e.id > before && e.actor !== ME.id ? 'unread' : ''}" data-act="openEvent" data-id="${e.id}"><span class="av" style="width:36px;height:36px">${ic(EV_ICON[e.kind] || 'warn')}</span><span class="grow"><span class="t">${esc(e.title)}</span>${e.body ? `<span class="s" style="display:block">${esc(e.body)}</span>` : ''}<span class="s" style="display:block">${esc(fmtWhen(e.at))}</span></span></button>`).join('')}</div>` : '<div class="empty">Nothing yet. When something happens on your sites it shows here.</div>'}` };
+}
+function sheetPush(s) {
+  const st = state.push || 'off';
+  const what = roleOf(ME.id) === 'admin' ? 'As Safety Manager you get a notification for everything that happens on every site.' : 'You get a notification when something happens on a site you are on: a DSTI, toolbox talk, inspection, incident or new person on site. You also get anything meant for you, like a decision on your request or an appointment to sign.';
+  const box = {
+    ios: '<div class="banner info">On an iPhone, notifications only work from the home screen. In Safari tap Share, then Add to Home Screen. Open H&amp;S on Command from the home screen, then come back here.</div>',
+    none: '<div class="banner info">This browser can’t show notifications. On Android, open the app in Chrome. On an iPhone, add it to the home screen first.</div>',
+    blocked: '<div class="banner">Notifications are blocked for this app. Allow them in your phone’s settings, then come back here.</div>',
+    pin: '<div class="banner info">Sign in with your PIN first, then turn notifications on.</div><button class="btn dark block" data-act="pinAgain">Sign in with your PIN</button>',
+    on: `<div class="card row" style="gap:10px"><span class="chip good">On</span><span class="grow">Notifications are on for ${esc(ME.name)} on this phone.</span></div><div class="rowbtns"><button class="btn grow" data-act="pushTest">Send a test</button><button class="btn ghost grow" data-act="pushOff">Turn off on this phone</button></div>`,
+    off: '<button class="btn hivis block" data-act="pushOn">Turn on notifications</button><p class="muted small">Your phone will ask to allow notifications. Tap Allow.</p>',
+  }[st] || '';
+  return { title: 'Notifications', body: `<p>${esc(what)}</p>${box}${s.err ? `<div class="banner">${esc(s.err)}</div>` : ''}<p class="muted small">They arrive even when the app is closed. Each phone is switched on by itself.</p>` };
+}
+function sheetTeam(s) {
+  const sid = s.site; const site = SITES[sid];
+  const back = s.from === 'settings' ? `<button class="link" data-act="setPage" data-v="sites" style="align-self:flex-start">← Sites and notifications</button>` : '';
+  if (!site) return { title: 'Site team', body: back + '<div class="empty">This site is closed.</div>' };
+  const mgr = isAdmin() || isManager(sid); const on = siteNotifyOn(sid); const an = adminName();
+  const pend = REQUESTS.find(r => r.kind === 'notify' && r.site === sid && r.status === 'pending');
+  const team = teamOf(sid).filter(m => WORKER[m.pid]).sort((a, b) => (a.role === b.role ? 0 : a.role === 'manager' ? -1 : 1) || WORKER[a.pid].name.localeCompare(WORKER[b.pid].name));
+  const notif = canSwitchNotify(sid)
+    ? `<button class="toggle card" data-act="siteNotify" aria-pressed="${on}"><span class="grow"><b>Notifications for this site</b><span class="s muted small" style="display:block">${on ? 'On. Everyone on the team below gets them.' : 'Off. The team gets none for this site.'} ${isAdmin() ? 'You get them either way.' : esc(an) + ' gets them either way.'}</span></span><span class="sw ${on ? 'on' : ''}" aria-hidden="true"></span></button>`
+    : `<div class="card stack" style="gap:8px"><div class="row"><b class="grow">Notifications for this site</b>${on ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</div>
+      <p class="muted small">${on ? 'Everyone on the team below gets them.' : 'The team gets none for this site.'} ${esc(an)} gets them either way.</p>
+      ${mgr ? (pend ? `<span class="chip warn" style="align-self:flex-start;white-space:normal">Asked to switch ${pend.on ? 'on' : 'off'} · waiting for ${esc(an)}</span>` : `<button class="btn sm" data-act="siteNotify" style="align-self:flex-start">Ask to switch them ${on ? 'off' : 'on'}</button><p class="muted small">${esc(an)} approves this.</p>`) : '<p class="muted small">Only the site manager can ask to change this.</p>'}</div>`;
+  const rows = team.map(m => { const w = WORKER[m.pid]; const me = m.pid === ME.id; const edit = mgr && (isAdmin() || !me);
+    return `<div class="li" style="flex-wrap:wrap"><span class="grow"><span class="t">${esc(w.name)}${me ? ' (you)' : ''}</span><span class="s" style="display:block">${esc(w.role)}</span></span>${m.role === 'manager' ? '<span class="chip good">Manager</span>' : '<span class="chip">Team</span>'}
+      ${edit ? `<div class="rowbtns" style="width:100%">${m.role === 'manager' ? `<button class="btn sm" data-act="teamSet" data-id="${esc(m.pid)}" data-v="member">Make team member</button>` : roleOf(m.pid) !== 'worker' ? `<button class="btn sm" data-act="teamSet" data-id="${esc(m.pid)}" data-v="manager">Make manager</button>` : ''}<button class="btn sm ghost" data-act="teamSet" data-id="${esc(m.pid)}" data-v="remove">${state._tmArmed === m.pid ? 'Tap again to remove' : 'Remove'}</button></div>` : ''}</div>`; }).join('');
+  const q = (state.teamQuery || '').trim().toLowerCase(); const inTeam = new Set(team.map(m => m.pid));
+  const finds = !mgr || q.length < 2 ? [] : CREW.filter(w => !inTeam.has(w.id) && w.name.toLowerCase().includes(q)).slice(0, 6);
+  const add = mgr ? `<div class="field"><label for="teamSearch">Add someone to the team</label><input id="teamSearch" type="search" placeholder="Type a name" value="${esc(state.teamQuery || '')}" data-bind="teamQuery" autocomplete="off"></div>${finds.length ? `<div class="list">${finds.map(w => `<div class="li"><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)}</span></span><button class="btn sm" data-act="teamSet" data-id="${esc(w.id)}" data-v="member">Add</button></div>`).join('')}</div>` : ''}` : '';
+  return { title: site.name, body: back + notif + `<section><div class="sec-h"><h3>Team</h3><span class="muted small num">${team.length}</span></div>${team.length ? `<div class="list">${rows}</div>` : '<div class="empty">Nobody yet. Signing people in to this site adds them.</div>'}</section>` + add + `<p class="muted small">Signing someone in to this site adds them to the team. ${isAdmin() ? 'You get' : esc(an) + ' gets'} every notification from every site.</p>` };
 }
 function sheetSite() {
   const list = `<div class="list">${Object.values(SITES).map(s => { const r = readiness(s.id); return `<button class="li" data-act="setSite" data-id="${s.id}"><span class="grow"><span class="t">${esc(s.name)}</span><span class="s" style="display:block">${esc(s.kind)} · ${r.good + r.warn + r.bad} ${SUPA ? 'signed in today' : 'people'} · ${r.bad} not cleared</span></span>${s.id === state.site ? '<span class="chip good">Current</span>' : ''}</button>`; }).join('')}</div>`;
@@ -1165,11 +1318,16 @@ function sheetSite() {
       <div class="field"><label for="nsProject">Project (optional)</label><select id="nsProject"><option value="">No project</option>${projects.map(n => `<option>${esc(n)}</option>`).join('')}</select></div>
       <div class="field"><label for="nsArea">Area or address (optional)</label><input id="nsArea" placeholder="For example: 90 Plein Street, Cape Town"></div>
       <button class="btn dark" data-act="createSite">Create site</button></section>` : '';
-  const close = isSup() && state.site ? `<button class="btn ghost" data-act="closeSite">${state._closeArmed ? 'Tap again to close ' + esc(curSite().short) : 'Close this site (work finished)'}</button>` : '';
+  const close = isSup() && state.site && (isAdmin() || isManager(state.site) || (siteRow(state.site) || {}).createdBy === ME.id) ? `<button class="btn ghost" data-act="closeSite">${state._closeArmed ? 'Tap again to close ' + esc(curSite().short) : 'Close this site (work finished)'}</button>` : '';
   return { title: 'Switch site', body: (Object.keys(SITES).length ? list : '<div class="empty">No sites yet.</div>') + newSite + close };
+}
+function pushPrompt() {
+  if (!SUPA || !['off', 'ios'].includes(state.push) || store.get('hsoc-push-nag', '') === ME.id) return '';
+  return `<section class="card row" style="gap:12px;align-items:flex-start"><span class="av">${ic('bell')}</span><div class="grow stack" style="gap:8px"><div><b>Turn on notifications</b><p class="muted small" style="margin-top:2px">${isAdmin() ? 'Get a message on this phone for everything that happens on every site.' : 'Get a message on this phone when something happens on your sites.'}</p></div><div class="rowbtns"><button class="btn sm dark" data-act="pushSheet">Turn on</button><button class="btn sm ghost" data-act="pushLater">Not now</button></div></div></section>`;
 }
 function viewNoSite() {
   return `<div class="page gut"><div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Hello, ${esc(ME.name.split(' ')[0])}</h1></div>
+    ${pushPrompt()}
     <div class="card stack" style="gap:10px"><h2>No site set up yet</h2><p class="muted">${isSup() ? 'Create the first site, then sign your team in to it each morning.' : 'Your supervisor creates sites and signs the team in each morning. You can still report an incident.'}</p>
     ${isSup() ? '<button class="btn dark" data-act="switchSite">Create a site</button>' : '<button class="btn" data-act="startFlow" data-flow="incident">Report incident</button>'}</div></div>`;
 }
@@ -1311,7 +1469,7 @@ async function logCheck(decision) {
 /* ================= people, sites, requests and appointments ================= */
 const adminName = () => (Object.values(ROLES).find(r => r.role === 'admin') && WORKER[Object.values(ROLES).find(r => r.role === 'admin').pid]?.name) || 'the Safety Manager';
 const apTitle = ref => (STATIC.letters && STATIC.letters[ref] && STATIC.letters[ref].short) || (DATA && DATA.appts && DATA.appts[ref]) || ref;
-const reqLabel = r => [...(r.appointments || []).map(apTitle), ...(r.certs || []).map(c => (COMPS[c] && COMPS[c].name) || c)].join(', ');
+const reqLabel = r => r.kind === 'notify' ? `Notifications ${r.on ? 'on' : 'off'} for ${r.siteName || (SITES[r.site] && SITES[r.site].name) || 'a site'}` : [...(r.appointments || []).map(apTitle), ...(r.certs || []).map(c => (COMPS[c] && COMPS[c].name) || c)].join(', ');
 const isFormSheet = () => state.sheet && ['addPerson', 'addCert', 'addId', 'request', 'sign', 'approve', 'appt', 'settings', 'signin'].includes(state.sheet.kind);
 function luhn(id) { let sum = 0; for (let i = 0; i < id.length; i++) { let d = +id[id.length - 1 - i]; if (i % 2) { d *= 2; if (d > 9) d -= 9; } sum += d; } return sum % 10 === 0; }
 function applyFeed(f, quiet) {
@@ -1333,7 +1491,8 @@ function maybePopups() {
   // supervisor: their request was decided
   const decided = REQUESTS.find(r => r.requestedBy === ME.id && state.knownReq[r.id] === 'pending' && r.status !== 'pending');
   REQUESTS.forEach(r => { state.knownReq[r.id] = r.status; });
-  if (decided && !state.sheet && !state.flow) { state.sheet = { kind: 'notice', icon: decided.status === 'approved' ? 'check' : 'x', title: decided.status === 'approved' ? 'Approved' : 'Not approved', text: `${adminName()} ${decided.status === 'approved' ? 'approved' : 'declined'}: ${reqLabel(decided)} for ${WORKER[decided.person]?.name || 'the person'}.${decided.note ? ' Note: ' + decided.note : ''}${decided.status === 'approved' && (decided.appointments || []).length ? ' They can now sign the appointment.' : ''}`, act: 'openWorker', actId: decided.person, actLabel: 'Open ' + (WORKER[decided.person]?.name || 'person') }; renderSheet(); return; }
+  if (decided && decided.kind === 'notify' && decided.status === 'approved') { const x = siteRow(decided.site); if (x) { x.notify = !!decided.on; if (!state.flow) renderMain(true); } }
+  if (decided && !state.sheet && !state.flow) { state.sheet = { kind: 'notice', icon: decided.status === 'approved' ? 'check' : 'x', title: decided.status === 'approved' ? 'Approved' : 'Not approved', text: `${adminName()} ${decided.status === 'approved' ? 'approved' : 'declined'}: ${reqLabel(decided)}${decided.kind === 'notify' ? '' : ' for ' + (WORKER[decided.person]?.name || 'the person')}.${decided.note ? ' Note: ' + decided.note : ''}${decided.status === 'approved' && (decided.appointments || []).length ? ' They can now sign the appointment.' : ''}`, act: 'openWorker', actId: decided.person, actLabel: 'Open ' + (WORKER[decided.person]?.name || 'person') }; renderSheet(); return; }
   // the appointee's own phone: appointment waiting to be signed
   state.seenAppt = state.seenAppt || new Set();
   const mine = APPTS.find(a => a.person === ME.id && a.status === 'to sign' && !state.seenAppt.has(a.id));
@@ -1342,7 +1501,7 @@ function maybePopups() {
 async function attSet(pid, present) {
   if (!state.site) { toast('Choose a site first.'); return false; }
   if (isOffline()) { toast('Signing people in needs signal.'); return false; }
-  try { const list = await rpc('hs_att_set', { tok: state.tok, site: state.site, day: todayISO(), person: pid, present }); state.att = { ...state.att, [state.site]: list || [] }; state._attSig = ''; onData(); return true; }
+  try { const list = await rpc('hs_att_set', { tok: state.tok, site: state.site, day: todayISO(), person: pid, present }); state.att = { ...state.att, [state.site]: list || [] }; if (present && !MEMBERS.some(m => m.site === state.site && m.pid === pid)) MEMBERS.push({ site: state.site, pid, role: 'member' }); state._attSig = ''; onData(); return true; }
   catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not update the site register. Try again.'); return false; }
 }
 async function savePersonBody(person) {
@@ -1436,6 +1595,12 @@ function sheetRequest(s) {
 function sheetApprove(s) {
   const r = REQUESTS.find(x => x.id === s.id); if (!r) return { title: 'Request', body: '<div class="empty">This request is no longer there.</div>' };
   const w = WORKER[r.person]; const p = w && w.onsite ? w.person : null; const letters = STATIC.letters || {}; const pending = REQUESTS.filter(x => x.status === 'pending').length;
+  if (r.kind === 'notify') return { title: 'Approval needed', body: `<p class="muted small">${pending} request${pending === 1 ? '' : 's'} waiting · from ${esc(WORKER[r.requestedBy]?.name || 'a site manager')} · ${esc(fmtWhen(r.createdAt))}</p>
+    <div class="card stack" style="gap:6px"><p class="eyebrow">Site notifications</p><h2>Switch ${r.on ? 'on' : 'off'}: ${esc(r.siteName || SITES[r.site]?.name || 'site')}</h2>
+      <p class="muted small">${r.on ? 'The site team will get phone notifications for this site again.' : 'The site team will stop getting phone notifications for this site. You keep getting them.'}</p></div>
+    <div class="field"><label for="dcNote">Your note (optional)</label><input id="dcNote" data-dbind="note" value="${esc(s.d.note)}"></div>
+    <div class="rowbtns"><button class="btn good grow" data-act="decide" data-v="approved">Approve</button><button class="btn bad grow" data-act="decide" data-v="declined">Decline</button></div>
+    <button class="btn ghost" data-act="laterReq">Later</button>` };
   return { title: 'Approval needed', body: `<p class="muted small">${pending} request${pending === 1 ? '' : 's'} waiting · from ${esc(WORKER[r.requestedBy]?.name || 'a supervisor')} · ${esc(fmtWhen(r.createdAt))}${r.siteName ? ' · ' + esc(r.siteName) : ''}</p>
     <div class="card stack" style="gap:6px"><h2>${esc(w ? w.name : r.personName || r.person)}</h2><p class="muted small">${esc(w ? w.role + ' · ' + w.no : '')}</p>
       ${p ? `<dl class="kv"><dt>ID number</dt><dd class="mono">${esc(p.idNo || 'Not captured')}</dd><dt>Company</dt><dd>${esc(p.company || '—')}</dd></dl>${p.idPhoto ? `<div class="thumbs"><img data-photo="${esc(p.idPhoto)}" alt="ID document"></div>` : ''}` : ''}
@@ -1477,6 +1642,7 @@ function sheetSettings(s) {
     const item = (v, t, sub) => `<button class="li" data-act="setPage" data-v="${v}"><span class="grow"><b>${t}</b><span class="s" style="display:block">${sub}</span></span></button>`;
     return { title: 'Settings', body: `<div class="list">
       ${item('requests', 'Requests waiting', pend ? `${pend} waiting for your approval` : 'Nothing waiting')}
+      ${item('sites', 'Sites and notifications', `${Object.keys(SITES).length} site${Object.keys(SITES).length === 1 ? '' : 's'} · ${Object.keys(SITES).filter(k => !siteNotifyOn(k)).length} with notifications off`)}
       ${item('roles', 'Supervisors and PINs', `${Object.values(ROLES).filter(r => r.role !== 'worker').length} people with supervisor or Safety Manager access`)}
       ${item('people', 'People added on site', `${ons.length} people · ${aw} certificate${aw === 1 ? '' : 's'} to check`)}
       ${item('appts', 'Appointments', `${APPTS.filter(a => a.status === 'to sign').length} waiting for signature · ${APPTS.filter(a => a.status === 'signed').length} signed`)}
@@ -1486,13 +1652,17 @@ function sheetSettings(s) {
       ${item('code', 'Company code', 'Change the code staff use to open the app')}</div>` };
   }
   if (page === 'requests') { const list = REQUESTS.filter(r => r.status === 'pending'); return { title: 'Requests waiting', body: back + (list.length ? `<div class="list">${list.map(r => `<button class="li" data-act="openReq" data-id="${esc(r.id)}"><span class="grow"><span class="t">${esc(WORKER[r.person]?.name || r.personName || '')}</span><span class="s" style="display:block">${esc(reqLabel(r))} · from ${esc(WORKER[r.requestedBy]?.name || '')}</span></span><span class="chip warn">Decide</span></button>`).join('')}</div>` : '<div class="empty">Nothing waiting.</div>') }; }
+  if (page === 'sites') {
+    const list = Object.values(SITES);
+    return { title: 'Sites and notifications', body: back + `<p class="muted small">You get every notification from every site. A site’s team gets that site’s notifications while they are switched on. Tap a site to change its team or switch.</p>` + (list.length ? `<div class="list">${list.map(x => { const t = teamOf(x.id); const mg = t.filter(m => m.role === 'manager' && WORKER[m.pid]).map(m => WORKER[m.pid].name); return `<button class="li" data-act="teamOpen" data-id="${esc(x.id)}"><span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${t.length} on the team${mg.length ? ' · manager ' + esc(mg.join(', ')) : ''}</span></span>${siteNotifyOn(x.id) ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</button>`; }).join('')}</div>` : '<div class="empty">No sites yet.</div>') };
+  }
   if (page === 'roles') {
     const q = (state.roleQuery || '').trim().toLowerCase();
     const holders = Object.values(ROLES).filter(r => r.role !== 'worker' && WORKER[r.pid]).sort((a, b) => WORKER[a.pid].name.localeCompare(WORKER[b.pid].name));
     const finds = q.length < 2 ? [] : CREW.filter(w => !w.onsite && roleOf(w.id) === 'worker' && w.name.toLowerCase().includes(q)).slice(0, 6);
     return { title: 'Supervisors and PINs', body: back + `<p class="muted small">Supervisors sign in with a 4-digit PIN that you set and give them. Only you can approve appointments.</p>
       <div class="list">${holders.map(r => `<div class="li" style="flex-wrap:wrap"><span class="grow"><span class="t">${esc(WORKER[r.pid].name)}</span><span class="s" style="display:block">${r.role === 'admin' ? 'Safety Manager' : 'Supervisor'} · ${r.hasPin ? 'PIN set' : 'No PIN yet'}</span></span>
-        <div class="addrow" style="width:100%"><input id="pin-${r.pid}" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" aria-label="New PIN for ${esc(WORKER[r.pid].name)}"><button class="btn sm dark" data-act="setPin" data-id="${r.pid}">Set PIN</button>${r.role === 'supervisor' ? `<button class="btn sm" data-act="makeRole" data-id="${r.pid}" data-v="worker">Remove</button>` : ''}</div></div>`).join('')}</div>
+        <div class="addrow" style="width:100%"><input id="pin-${r.pid}" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" aria-label="New PIN for ${esc(WORKER[r.pid].name)}"><button class="btn sm dark" data-act="setPin" data-id="${r.pid}">Set PIN</button>${r.role === 'supervisor' ? `<button class="btn sm" data-act="makeRole" data-id="${r.pid}" data-v="worker">Remove</button>` : ''}</div>${r.role === 'supervisor' ? `<button class="toggle" data-act="permNotify" data-id="${r.pid}" aria-pressed="${hasPerm(r.pid, 'notify')}" style="padding:2px 0"><span class="grow small">May switch notifications for sites they manage without asking you</span><span class="sw ${hasPerm(r.pid, 'notify') ? 'on' : ''}" aria-hidden="true"></span></button>` : ''}</div>`).join('')}</div>
       <div class="field"><label for="roleSearch">Make someone a supervisor</label><input id="roleSearch" type="search" placeholder="Type a name" value="${esc(state.roleQuery || '')}" data-bind="roleQuery" autocomplete="off"></div>
       ${finds.length ? `<div class="list">${finds.map(w => `<div class="li"><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)}</span></span><button class="btn sm" data-act="makeRole" data-id="${w.id}" data-v="supervisor">Make supervisor</button></div>`).join('')}</div>` : ''}` };
   }
@@ -1618,7 +1788,7 @@ const H = {
     el.disabled = true;
     try {
       const res = await rpc('hs_decide', { tok: state.tok, rid: r.id, decision: el.dataset.v, note: (s.d.note || '').trim(), appts });
-      Object.assign(r, res); state.seenReq = state.seenReq || new Set(); state.seenReq.add(r.id);
+      Object.assign(r, res); if (r.kind === 'notify') { const x = siteRow(r.site); if (x && r.status === 'approved') x.notify = !!r.on; if (!x) refreshBoot(); } state.seenReq = state.seenReq || new Set(); state.seenReq.add(r.id);
       toast(el.dataset.v === 'approved' ? 'Approved' + (appts.length ? '. The appointment is ready to sign.' : '') : 'Declined');
       state.sheet = null; renderSheet(); await loadFeed(); initData(DATA); onData(); setTimeout(maybePopups, 300);
     } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not save. Try again.'); el.disabled = false; }
@@ -1638,14 +1808,66 @@ const H = {
     const name = ($('#nsName').value || '').trim(); if (!name) { toast('Give the site a name.'); return; }
     const site = { id: 's' + uid(), name, project: $('#nsProject').value || '', area: ($('#nsArea').value || '').trim(), active: true, createdBy: ME.id, createdAt: new Date().toISOString() };
     el.disabled = true;
-    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push(site); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.sheet = null; renderSheet(); render(); toast('Site created: ' + name); }
+    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push({ ...site, notify: true }); MEMBERS.push({ site: site.id, pid: ME.id, role: 'manager' }); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.sheet = null; renderSheet(); render(); toast('Site created: ' + name); }
     catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not create the site.'); el.disabled = false; }
   },
   closeSite: async () => { if (!state._closeArmed) { state._closeArmed = true; renderSheet(); setTimeout(() => { state._closeArmed = false; if (state.sheet && state.sheet.kind === 'site') renderSheet(); }, 4000); return; } state._closeArmed = false; const x = SITE_LIST.find(v => v.id === state.site); try { await rpc('hs_put_site', { tok: state.tok, site: { ...x, active: false } }); x.active = false; buildSites(); state.sheet = null; render(); toast('Site closed'); } catch { toast('Could not close the site.'); } },
   dsAddHaz: el => addOneOff('hazards', el), dsAddCtl: el => addOneOff('controls', el), dsAddPpe: el => addOneOff('ppe', el),
   inAddItem: el => { const v = ($('#' + el.dataset.input).value || '').trim(); if (!v) return; state.draft.items.push({ q: v, a: null, note: '', photos: [] }); renderMain(true); },
   tab: el => { state.tab = el.dataset.tab; state.sheet = null; renderSheet(); renderNav(); renderMain(); $('#main').scrollTop = 0; },
-  menu: () => { state.sheet = { kind: 'menu' }; renderSheet(); },
+  menu: () => { state.sheet = { kind: 'menu' }; renderSheet(); refreshPushStatus(); },
+  alerts: () => openAlerts(),
+  openEvent: el => {
+    const e = EVENTS.find(x => String(x.id) === el.dataset.id); if (!e) return;
+    const go = sh => { state.sheet = sh; renderSheet(); };
+    if (isAdmin() && e.kind === 'request') return go({ kind: 'settings', page: 'requests' });
+    if (isAdmin() && e.kind === 'cert') return go({ kind: 'settings', page: 'people' });
+    if (e.kind === 'sign') { const a = APPTS.find(x => x.person === ME.id && x.status === 'to sign'); if (a) return go({ kind: 'appt', id: a.id }); }
+    if (isAdmin() && (e.kind === 'sign' || e.kind === 'signed')) return go({ kind: 'settings', page: 'appts' });
+    if (e.kind === 'notify' && isSup() && e.site && SITES[e.site]) return go({ kind: 'team', site: e.site });
+    if (e.site && SITES[e.site]) { state.site = e.site; store.set('sheq-site', e.site); state.tab = ['dsti', 'toolbox', 'inspection', 'incident', 'check'].includes(e.kind) ? 'activity' : 'home'; state.sheet = null; renderSheet(); renderNav(); renderMain(); renderOffice(); $('#main').scrollTop = 0; return; }
+    state.sheet = null; renderSheet();
+  },
+  pushSheet: () => { state.sheet = { kind: 'push' }; renderSheet(); refreshPushStatus(); },
+  pushLater: () => { store.set('hsoc-push-nag', ME.id); renderMain(true); },
+  pushOn: async el => {
+    const s = state.sheet; s.err = ''; el.disabled = true; el.textContent = 'Turning on…'; let r;
+    try { r = await pushOn(); } catch (e) { r = e && (e.status === 401 || e.status === 403) ? 'pin' : 'err'; }
+    if (r === 'on') toast('Notifications are on.');
+    else if (r === 'pin') state.push = 'pin';
+    else if (r === 'nokey') s.err = 'The notification service is still starting. Try again in a minute.';
+    else if (r === 'offline') s.err = 'You need signal to turn notifications on.';
+    else if (r === 'err') s.err = 'Could not turn notifications on. Try again.';
+    await refreshPushStatus(); if (state.sheet === s) renderSheet(); renderMain(true);
+  },
+  pushOff: async () => { await pushOff(); toast('Notifications are off on this phone.'); renderSheet(); renderMain(true); },
+  pushTest: async el => { el.disabled = true; try { const ok = await rpc('hs_push_test', { tok: state.tok || null, me: ME.id }); toast(ok ? 'Test sent. It should arrive in a few seconds.' : 'This phone is not set up yet. Turn notifications off and on again.'); } catch { toast('Could not send the test. Check your signal.'); } el.disabled = false; },
+  teamSheet: () => { if (!state.site) return; state.teamQuery = ''; state.sheet = { kind: 'team', site: state.site }; renderSheet(); },
+  teamOpen: el => { state.teamQuery = ''; state.sheet = { kind: 'team', site: el.dataset.id, from: 'settings' }; renderSheet(); },
+  teamSet: async el => {
+    const s = state.sheet; const pid = el.dataset.id, v = el.dataset.v;
+    if (v === 'remove' && state._tmArmed !== pid) { state._tmArmed = pid; renderSheet(); setTimeout(() => { if (state._tmArmed === pid) { state._tmArmed = null; if (state.sheet && state.sheet.kind === 'team') renderSheet(); } }, 4000); return; }
+    state._tmArmed = null; el.disabled = true;
+    try {
+      const list = await rpc('hs_site_member', { tok: state.tok, site: s.site, pid, role: v === 'manager' ? 'manager' : 'member', keep: v !== 'remove' });
+      MEMBERS = MEMBERS.filter(m => m.site !== s.site).concat(Array.isArray(list) ? list : []); state.teamQuery = ''; renderSheet();
+      toast((WORKER[pid]?.name || 'Done') + (v === 'remove' ? ' is off the team' : v === 'manager' ? ' now manages this site' : ' is on the team'));
+    } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager or the Safety Manager can change the team.' : 'Could not save. Try again.'); el.disabled = false; }
+  },
+  siteNotify: async el => {
+    const s = state.sheet; const sid = s.site; const want = !siteNotifyOn(sid); el.disabled = true;
+    try {
+      const res = await rpc('hs_site_notify', { tok: state.tok, site: sid, turn_on: want, rid: 'r' + uid() });
+      if (res && res.applied) { const x = siteRow(sid); if (x) x.notify = !!res.notify; toast(`Notifications ${res.notify ? 'on' : 'off'} for ${SITES[sid].name}`); }
+      else if (res && res.request) { REQUESTS.unshift(res.request); state.knownReq = state.knownReq || {}; state.knownReq[res.request.id] = 'pending'; toast(`Sent to ${adminName()} for approval`); }
+      renderSheet(); renderMain(true);
+    } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager can ask for this. Sign in with your PIN.' : 'Could not send. A request may already be waiting.'); el.disabled = false; }
+  },
+  permNotify: async el => {
+    const pid = el.dataset.id, g = !hasPerm(pid, 'notify');
+    try { await rpc('hs_set_perm', { tok: state.tok, pid, perm: 'notify', granted: g }); PERMS = g ? PERMS.concat([{ pid, perm: 'notify' }]) : PERMS.filter(p => !(p.pid === pid && p.perm === 'notify')); renderSheet(); toast(g ? `${WORKER[pid]?.name || 'They'} can now switch notifications for their sites` : `${WORKER[pid]?.name || 'They'} must ask you first`); }
+    catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not save. Try again.'); }
+  },
   hideDemo: () => { $('#demoBar').hidden = true; store.set('sheq-demo-hidden', true); },
   switchSite: () => { state.sheet = { kind: 'site' }; renderSheet(); },
   pickMe: el => { if (!setMe(el.dataset.id)) return; store.set('hsoc-me', ME.id); state.needSignIn = false; state.meQuery = ''; setTok('', 'worker'); if (SUPA && roleOf(ME.id) !== 'worker') { state.needPin = true; state.pinErr = ''; } const mine = Object.values(SITES).find(x => x.kind === 'Division' && x.members.includes(ME.id)); if (mine && !store.get('sheq-site', '')) state.site = mine.id; render(); toast('Signed in as ' + ME.name); },
@@ -1711,7 +1933,7 @@ document.addEventListener('input', e => {
     if (t.dataset.ljob) { const x = s.ld.jobs[+t.dataset.ljob]; if (t.dataset.f === 'name') x.name = t.value; else x.req = t.value.split(/[,\s]+/).map(v => v.trim().toUpperCase()).filter(Boolean); return; }
   }
   const b = e.target.dataset && e.target.dataset.bind; if (!b) return;
-  if (b === 'siQuery' || b === 'roleQuery') { state[b] = e.target.value; clearTimeout(searchT); const id = e.target.id; searchT = setTimeout(() => { if (state.sheet) { state.sheet.focus = id; renderSheet(); state.sheet.focus = null; } }, 150); return; }
+  if (b === 'siQuery' || b === 'roleQuery' || b === 'teamQuery') { state[b] = e.target.value; clearTimeout(searchT); const id = e.target.id; searchT = setTimeout(() => { if (state.sheet) { state.sheet.focus = id; renderSheet(); state.sheet.focus = null; } }, 150); return; }
   if (b === 'meQuery') { state.meQuery = e.target.value; clearTimeout(searchT); searchT = setTimeout(() => { const pos = e.target.selectionStart; renderMain(true); const s = $('#meSearch'); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch {} } }, 150); return; }
   if (b === 'crewQuery') { state.crewQuery = e.target.value; clearTimeout(searchT); searchT = setTimeout(() => { const pos = e.target.selectionStart; renderMain(true); const s = $('#crewSearch'); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch {} } }, 150); return; }
   const d = state.draft; if (!d) return;
@@ -1726,11 +1948,20 @@ document.addEventListener('input', e => {
 /* ================= boot ================= */
 if (store.get('sheq-demo-hidden', false)) $('#demoBar').hidden = true;
 $('#logo').src = LOGO;
+if (location.hash === '#alerts') { state._openAlerts = true; try { history.replaceState(null, '', location.pathname + location.search); } catch {} }
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  const m = e.data || {};
+  if (m.hs === 'push') { loadActivity(); if (SUPA) { loadFeed(); pullRecords(); } }
+  if (m.hs === 'open') { state._openAlerts = true; maybeOpenAlerts(); }
+});
+{ const pick = H.pickMe, cu = H.changeUser;
+  H.pickMe = el => { pick(el); state._evSig = ''; EVENTS = []; renderBell(); pushSync(); loadActivity(); };
+  H.changeUser = el => { pushRelease(); EVENTS = []; state._evSig = ''; cu(el); renderBell(); }; }
 if (DATA) initData(DATA);
 render();
 initCaps();
 setTimeout(() => { if (state.mode === 'connecting') setMode('local'); if (DATA) onData(); }, 11000);
-window.__hs = { loadFeed: () => loadFeed(), refreshBoot: () => refreshBoot(), people: () => PEOPLE, open: s => { state.sheet = s; renderSheet(); } };
+window.__hs = { loadFeed: () => loadFeed(), refreshBoot: () => refreshBoot(), people: () => PEOPLE, events: () => EVENTS, members: () => MEMBERS, sites: () => SITE_LIST, loadActivity: () => loadActivity(), pushStatus: () => state.push, open: s => { state.sheet = s; renderSheet(); } };
 })();
 </script>
 <script>if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(function(){});</script></body></html>
