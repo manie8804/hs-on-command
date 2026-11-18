@@ -101,6 +101,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .bell .badge { position: absolute; top: 1px; right: -1px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: .66rem; font-weight: 700; display: grid; place-items: center; line-height: 1; border: 2px solid var(--chrome); box-sizing: border-box; }
 .li.unread .t::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 7px; vertical-align: middle; }
 .toggle.card { border-radius: var(--r); }
+.newdot { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--bad); color: #fff; font-size: .72rem; font-weight: 700; display: inline-grid; place-items: center; flex: none; box-sizing: border-box; }
+.divh .chev { display: grid; color: var(--muted); flex: none; } .divh .chev .ic { transition: transform .15s; } .divh[aria-expanded="true"] .chev .ic { transform: rotate(180deg); }
+.divsites .li { padding-left: 30px; background: var(--surface-2); }
+.li.lvl[disabled] { opacity: .5; cursor: not-allowed; } .li.lvl.on { box-shadow: inset 3px 0 0 var(--good); }
 .tape { height: 1px; background: var(--chrome-2); }
 .demo { flex: none; display: flex; align-items: center; gap: 10px; padding-block: 8px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: .82rem; color: var(--ink-2); }
 .demo b { color: var(--ink); }
@@ -390,6 +394,7 @@ const I = {
   warn: '<path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/>',
   monitor: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  chev: '<path d="M6 9l6 6 6-6"/>',
 };
 const ic = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[name]}</svg>`;
 
@@ -421,6 +426,28 @@ const teamOf = sid => MEMBERS.filter(m => m.site === sid);
 const isManager = (sid, pid = ME.id) => !!pid && MEMBERS.some(m => m.site === sid && m.pid === pid && m.role === 'manager');
 const hasPerm = (pid, perm) => PERMS.some(p => p.pid === pid && p.perm === perm);
 const canSwitchNotify = sid => isAdmin() || (isSup() && isManager(sid) && hasPerm(ME.id, 'notify'));
+// access levels on a site: manager (runs the site and its team), supervisor (logs and signs people in), member (sees it)
+const siteRoleOf = (sid, pid = ME.id) => (MEMBERS.find(m => m.site === sid && m.pid === pid) || {}).role || '';
+const canLead = (sid = state.site) => !SUPA || isAdmin() || (isSup() && ['manager', 'supervisor'].includes(siteRoleOf(sid)));
+const canManage = sid => isAdmin() || (isSup() && siteRoleOf(sid) === 'manager' && hasPerm(ME.id, 'sites'));
+const canAddPeople = () => !SUPA || isAdmin() || (isSup() && hasPerm(ME.id, 'sites'));
+const LEVELS = [
+  { v: 'manager', name: 'Manager', d: 'Runs the site and its team.' },
+  { v: 'supervisor', name: 'Supervisor', d: 'Logs DSTIs, inspections, toolbox talks and staff checks, and signs people in.' },
+  { v: 'member', name: 'Team member', d: 'Sees the site, gets its notifications and reports incidents.' },
+];
+const LEVEL_NAME = { manager: 'Manager', supervisor: 'Supervisor', member: 'Team member' };
+function levelWhyNot(pid, v) {
+  if (v === 'manager' && roleOf(pid) !== 'admin' && !hasPerm(pid, 'sites')) return isAdmin() ? 'Allow them to create sites and add people first (Settings › Supervisors and PINs)' : 'Only staff ' + adminName() + ' allows can manage a site';
+  if (v === 'supervisor' && !['supervisor', 'admin'].includes(roleOf(pid))) return isAdmin() ? 'Make them a supervisor with a PIN first (Settings › Supervisors and PINs)' : 'Needs a supervisor PIN from ' + adminName();
+  return '';
+}
+// new activity per site, since this person last opened that site
+const siteSeenKey = () => 'hsoc-site-seen-' + (ME.id || '');
+const siteBaseKey = () => 'hsoc-site-base-' + (ME.id || '');
+function siteNew(sid) { const seen = store.get(siteSeenKey(), {}) || {}; const from = Math.max(+store.get(siteBaseKey(), 0) || 0, seen[sid] || 0); return EVENTS.filter(e => e.site === sid && e.id > from && e.actor !== ME.id).length; }
+function markSiteSeen(sid) { const top = EVENTS.filter(e => e.site === sid).reduce((m, e) => Math.max(m, e.id), 0); if (!top) return; const seen = store.get(siteSeenKey(), {}) || {}; if ((seen[sid] || 0) >= top) return; seen[sid] = top; store.set(siteSeenKey(), seen); }
+const who = () => ({ tok: state.tok || null, me: ME.id || store.get('hsoc-me', '') || null });
 function addMonths(iso, m) { const d = new Date(iso + 'T00:00:00'); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); }
 function personToCrew(p) {
   const held = {};
@@ -438,7 +465,7 @@ function rebuildCrew() {
 function buildSites() {
   SITES = {};
   if (SUPA) {
-    SITE_LIST.filter(x => x && x.active !== false).sort((a, b) => a.name.localeCompare(b.name)).forEach(x => { SITES[x.id] = { id: x.id, name: x.name, short: x.name.length > 24 ? x.name.slice(0, 22) + '…' : x.name, kind: [x.project, x.area].filter(Boolean).join(' · ') || 'Site', members: [] }; });
+    SITE_LIST.filter(x => x && x.active !== false && (isAdmin() || MEMBERS.some(m => m.site === x.id && m.pid === (ME.id || store.get('hsoc-me', ''))))).sort((a, b) => a.name.localeCompare(b.name)).forEach(x => { SITES[x.id] = { id: x.id, name: x.name, short: x.name.length > 24 ? x.name.slice(0, 22) + '…' : x.name, kind: [x.project, x.area].filter(Boolean).join(' · ') || 'Site', division: x.division || '', members: [] }; });
   } else {
     [...new Set(CREW.map(w => w.div))].sort((a, b) => (b.startsWith('ISS') ? 1 : 0) - (a.startsWith('ISS') ? 1 : 0) || a.localeCompare(b)).forEach((d, i) => { const id = 'div' + (i + 1); SITES[id] = { id, name: d, short: d.split(' – ')[0], kind: 'Division', members: CREW.filter(w => w.div === d).map(w => w.id) }; });
     (DATA.projects || []).filter(p => p.team.some(id => WORKER[id])).forEach(p => { SITES[p.id] = { id: p.id, name: p.n, short: p.n.length > 24 ? p.n.slice(0, 22) + '…' : p.n, kind: 'Project · ' + p.c, members: [...new Set(p.team)].filter(id => WORKER[id]) }; });
@@ -478,12 +505,15 @@ const DEF_TEMPLATES = [
   { id: 'fire', name: 'Fire extinguisher', items: ['In place and accessible', 'Pressure gauge in the green', 'Seal and pin intact', 'Service tag current', 'Signage visible'] },
 ];
 const DEF_TOPICS = ['Working near excavations', 'Harness and lanyard checks', 'Heat stress and drinking water', 'Manual handling', 'Housekeeping and slips', 'Reversing vehicles and the banksman', 'Lock-out before electrical work', 'Grinders and hand tools'];
+const DEF_DIVISIONS = ['Infrastructure Security Solutions (ISS)', 'Aviation', 'Broadcasting', 'Telecommunications', 'Multimedia'];
+let DIVISIONS = DEF_DIVISIONS;
 const DEF_DAILY = [{ flow: 'dsti' }, { flow: 'toolbox' }, { flow: 'inspect', tpl: 'ppe' }, { flow: 'inspect', tpl: 'vehicle' }];
 let HAZARDS = DEF_HAZARDS, CONTROLS = DEF_CONTROLS, PPE = DEF_PPE, TEMPLATES = DEF_TEMPLATES, TOPICS = DEF_TOPICS, DAILY = DEF_DAILY, LISTS = {};
 let TPL = Object.fromEntries(TEMPLATES.map(t => [t.id, t]));
 function applyLists(L) {
   LISTS = L || {};
   const arr = (v, d) => Array.isArray(v) && v.length ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()) : d;
+  DIVISIONS = arr(LISTS.divisions, DEF_DIVISIONS);
   HAZARDS = arr(LISTS.hazards, DEF_HAZARDS); CONTROLS = arr(LISTS.controls, DEF_CONTROLS); PPE = arr(LISTS.ppe, DEF_PPE); TOPICS = arr(LISTS.topics, DEF_TOPICS);
   TEMPLATES = Array.isArray(LISTS.templates) && LISTS.templates.length ? LISTS.templates.filter(t => t && t.id && t.name && Array.isArray(t.items) && t.items.length) : DEF_TEMPLATES;
   TPL = Object.fromEntries(TEMPLATES.map(t => [t.id, t]));
@@ -593,7 +623,7 @@ async function initSupa() {
   const cached = store.get('hsoc-boot', null);
   if (cached && applyBoot(cached)) afterData();
   try {
-    const b = await rpc('hs_boot', { tok: state.tok || null });
+    const b = await rpc('hs_boot', who());
     if (!b) { codeRejected('This phone’s company code is no longer accepted. Enter the new code.'); return; }
     store.set('hsoc-boot', b); applyBoot(b); if (!cached) afterData(); else onData();
   } catch { if (!cached) { state.needCode = true; state.codeErr = 'Could not reach the server. Check your signal and try again.'; render(); } }
@@ -604,7 +634,7 @@ async function submitCode(code) {
   const btn = $('#codeForm button'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
   supaCk = ck;
   try {
-    const b = await rpc('hs_boot', { tok: null });
+    const b = await rpc('hs_boot', { tok: null, me: null });
     if (!b) { supaCk = ''; state.codeErr = 'That code is not right. Check it and try again.'; render(); return; }
     store.set('hsoc-ck', ck); store.set('hsoc-boot', b); applyBoot(b); afterData();
   } catch { supaCk = ''; state.codeErr = 'Could not reach the server. Check your signal and try again.'; render(); }
@@ -683,6 +713,11 @@ async function loadActivity() {
   try {
     const ev = await rpc('hs_activity', { tok: state.tok || null, me: ME.id, lim: 80 }); if (!Array.isArray(ev)) return;
     const sig = (state.tok ? 't' : 'w') + ME.id + ev.map(x => x.id).join(','); if (sig === state._evSig) return; state._evSig = sig; EVENTS = ev;
+    if (store.get(siteBaseKey(), null) === null) store.set(siteBaseKey(), EVENTS[0] ? EVENTS[0].id : 0);
+    // someone added a site, a person, a certificate or this person to a team: fetch it now, not in a minute
+    const top = EVENTS[0] ? EVENTS[0].id : 0; const before = state._evTop || 0; state._evTop = Math.max(before, top);
+    if (before && EVENTS.some(e => e.id > before && ['site', 'person', 'cert', 'team'].includes(e.kind))) refreshBoot();
+    if (!state.flow && state.tab === 'home' && !state.needSignIn && !state.needPin && !state.needCode) renderMain(true);
     if (state.sheet && state.sheet.kind === 'alerts') { if (EVENTS[0]) store.set(seenKey(), Math.max(+store.get(seenKey(), 0) || 0, EVENTS[0].id)); renderSheet(); }
     renderBell();
     // a site created on someone else's phone since this phone last loaded: fetch it now rather than in a minute
@@ -706,12 +741,12 @@ function openAlerts() {
   state.sheet = { kind: 'alerts' }; renderSheet(); renderBell(); loadActivity(); refreshPushStatus();
 }
 const PUSH_TXT = { on: 'On for this phone', off: 'Off. Tap to turn on', ios: 'Add the app to your home screen first', blocked: 'Blocked in your phone settings', none: 'Not available in this browser', pin: 'Sign in with your PIN to turn on' };
-const EV_ICON = { incident: 'alert', request: 'warn', decision: 'check', sign: 'pen', signed: 'check', person: 'user', cert: 'clip', site: 'home', dsti: 'clip', toolbox: 'talk', inspection: 'clip', check: 'x', notify: 'bell' };
+const EV_ICON = { team: 'user', incident: 'alert', request: 'warn', decision: 'check', sign: 'pen', signed: 'check', person: 'user', cert: 'clip', site: 'home', dsti: 'clip', toolbox: 'talk', inspection: 'clip', check: 'x', notify: 'bell' };
 async function refreshBoot() {
-  try { const b = await rpc('hs_boot', { tok: state.tok || null }); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles, b.members, b.perms]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
+  try { const b = await rpc('hs_boot', who()); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles, b.members, b.perms]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
 }
 async function loadAtt() {
-  try { const a = await rpc('hs_attendance', { day: todayISO() }); if (a && typeof a === 'object') {
+  try { const a = await rpc('hs_attendance', { day: todayISO(), ...who() }); if (a && typeof a === 'object') {
     const sig = JSON.stringify(a); if (sig === state._attSig) return; state._attSig = sig; state.att = a; store.set('hsoc-att', { day: todayISO(), a });
     if (!isSup() && ME.id && !(state.att[state.site] || []).some(x => x.id === ME.id)) { const mine = Object.keys(state.att).find(k => SITES[k] && state.att[k].some(x => x.id === ME.id)); if (mine) state.site = mine; }
     onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } catch {}
@@ -721,7 +756,7 @@ async function pullRecords() {
   if (state.mode !== 'supa' || !supaCk || isOffline()) return;
   loadAtt(); if (++pollN % 4 === 0) refreshBoot();
   try {
-    const rows = await rpc('hs_records', { lim: 300 });
+    const rows = await rpc('hs_records', { lim: 300, ...who() });
     if (rows === null) { codeRejected('This phone’s company code is no longer accepted. Enter the new code.'); return; }
     if (!Array.isArray(rows)) return;
     const sig = rows.map(r => r.id + ':' + (r.updatedAt || '') + ':' + (r.openFindings ?? '')).join('|');
@@ -873,7 +908,7 @@ async function submitPin(pin) {
   const btn = $('#pinForm button'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
   try {
     const r = await rpc('hs_login', { pid: ME.id, pin: String(pin || '').trim() });
-    if (r && r.token) { setTok(r.token, r.role); state.needPin = false; state.pinErr = ''; render(); state._evSig = ''; pushSync(); loadActivity(); maybeOpenAlerts(); toast(r.role === 'admin' ? 'Signed in as Safety Manager' : 'Signed in as supervisor'); return; }
+    if (r && r.token) { setTok(r.token, r.role); state.needPin = false; state.pinErr = ''; buildSites(); render(); state._evSig = ''; pushSync(); loadActivity(); maybeOpenAlerts(); refreshBoot(); pullRecords(); loadFeed(); toast(r.role === 'admin' ? 'Signed in as Safety Manager' : 'Signed in as supervisor'); return; }
     state.pinErr = { wrong: 'That PIN is not right. After 5 wrong tries the account locks for 15 minutes.', locked: 'Too many wrong tries. Wait 15 minutes, or ask the Safety Manager to set a new PIN.', nopin: 'Your PIN has not been set yet. Ask the Safety Manager. You can carry on with worker access.', worker: 'You are not set up as a supervisor. Carry on with worker access.' }[r && r.error] || 'Could not sign in. Try again.';
   } catch { state.pinErr = 'Could not reach the server. Check your signal and try again.'; }
   render();
@@ -946,23 +981,25 @@ function viewHome() {
   return `<div class="page gut">
     <div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${greet}, ${esc(ME.name.split(' ')[0])}</h1></div>
     ${pushPrompt()}
+    ${divisionsHTML()}
     <section class="sitecard">
       <div class="row" style="align-items:flex-start">
         <div class="grow"><p class="eyebrow">${SUPA ? 'Your site today' : 'Your team today'}</p><h2>${esc(site.name)}</h2><p class="sub">${esc(site.kind)} · ${crew.length} ${SUPA ? 'signed in today' : 'people'}${SUPA && site.id && !siteNotifyOn(site.id) ? ' · notifications off' : ''}</p></div>
         <button class="btn sm switch" data-act="switchSite">Switch</button>
       </div>
-      ${SUPA && isSup() ? `<div class="rowbtns"><button class="btn sm switch" data-act="signInSheet">${ic('plus')}Sign people in</button><button class="btn sm switch" data-act="addPersonSheet">${ic('user')}Add new person</button>${state.site ? `<button class="btn sm switch" data-act="teamSheet">${ic('bell')}Site team</button>` : ''}</div>` : ''}
+      ${SUPA && state.site && (canLead() || isSup()) ? `<div class="rowbtns">${canLead() ? `<button class="btn sm switch" data-act="signInSheet">${ic('plus')}Sign people in</button>` : ''}${canLead() && canAddPeople() ? `<button class="btn sm switch" data-act="addPersonSheet">${ic('user')}Add new person</button>` : ''}<button class="btn sm switch" data-act="teamSheet">${ic('bell')}Site team</button></div>` : ''}
+      ${SUPA && state.site && !isAdmin() ? `<p class="sub" style="margin-top:-6px">Your access here: ${esc(LEVEL_NAME[siteRoleOf(state.site)] || 'Team member')}</p>` : ''}
       <div>${barHTML(r)}</div>
       <div class="cover">
         <div><b class="num">${fa}</b><span>First aiders · need ${faNeed} (1 per 50 workers)</span></div>
         <div><b class="num">${ff}</b><span>Trained fire fighters</span></div>
       </div>
     </section>
-    ${isSup() ? `<section>
+    ${canLead() ? `<section>
       <div class="sec-h"><h3>Daily checklist</h3><span class="muted small num">${daily.filter(x => x.done).length} of ${daily.length} done</span></div>
       <div class="list">${daily.map(x => `<button class="todo ${x.done ? 'done' : ''}" data-act="startFlow" data-flow="${x.flow}" ${x.tpl ? `data-tpl="${x.tpl}"` : ''}><span class="box">${ic('check')}</span><span class="grow"><span class="t" style="font-weight:600">${esc(x.label)}</span><span class="s muted small" style="display:block">${x.done ? 'Done today' : esc(x.sub)}</span></span>${x.done ? '' : '<span class="chip">Start</span>'}</button>`).join('')}</div>
     </section>` : ''}
-    ${isSup() ? `<div class="actions">
+    ${canLead() ? `<div class="actions">
       <button class="tile primary" data-act="tab" data-tab="scan">${ic('qr')}<span><b>Check a worker</b><span class="s">Scan the card QR code</span></span></button>
       <button class="tile" data-act="startFlow" data-flow="dsti">${ic('clip')}<span><b>DSTI</b><span class="s">Daily Safe Task Instruction</span></span></button>
       <button class="tile" data-act="startFlow" data-flow="inspect">${ic('clip')}<span><b>Inspection</b><span class="s">PPE, vehicle, ladder, excavation…</span></span></button>
@@ -995,7 +1032,7 @@ function viewCrew() {
   rows.sort((a, b) => order[a.v.level] - order[b.v.level] || a.w.name.localeCompare(b.w.name));
   return `<div class="page gut">
     <div class="row"><div class="grow"><p class="eyebrow">${esc(curSite().name)}</p><h1>${SUPA ? 'On site today' : 'Crew'}</h1></div><button class="btn sm" data-act="qrCards">${ic('qr')}QR cards</button></div>
-    ${SUPA && isSup() && state.site ? `<div class="rowbtns"><button class="btn sm" data-act="signInSheet">${ic('plus')}Sign people in</button><button class="btn sm" data-act="addPersonSheet">${ic('user')}Add new person</button></div>` : ''}
+    ${SUPA && canLead() && state.site ? `<div class="rowbtns"><button class="btn sm" data-act="signInSheet">${ic('plus')}Sign people in</button>${canAddPeople() ? `<button class="btn sm" data-act="addPersonSheet">${ic('user')}Add new person</button>` : ''}</div>` : ''}
     <input id="crewSearch" type="search" placeholder="Search name, role or employee number" value="${esc(state.crewQuery)}" data-bind="crewQuery" aria-label="Search crew">
     <div class="seg">${[['all', 'Everyone'], ['bad', 'Not cleared'], ['warn', 'Due soon']].map(([k, l]) => `<button class="${state.crewFilter === k ? 'on' : ''}" data-act="crewFilter" data-f="${k}">${l}</button>`).join('')}</div>
     ${rows.length ? `<div class="list">${rows.map(({ w, v }) => `<button class="li" data-act="openWorker" data-id="${w.id}">
@@ -1211,7 +1248,7 @@ function sheetWorker(s) {
     <div class="field"><span class="lab">Checking for</span>${taskChips(taskId, 'workerTask', false)}</div>
     <div class="verdict ${v.level}">${ic(v.level === 'bad' ? 'x' : 'check')}<div class="grow"><div class="big">${words[v.level]}</div><p style="margin-top:4px;font-weight:600">${esc(v.task.name)}</p>${reasons.length ? `<ul>${reasons.slice(0, 4).map(r => `<li>${esc(r)}</li>`).join('')}${more ? `<li>and ${more} more below</li>` : ''}</ul>` : ''}</div></div>
     ${v.items.length ? '' : '<div class="empty">Nothing is required for this role.</div>'}<div class="list">${v.items.map(i => `<div class="req"><span class="n">${esc(COMPS[i.code].name)}</span>${stChip(i.s)}<span class="d">${esc(i.label)}</span></div>`).join('')}</div>
-    <div class="row" style="flex-wrap:wrap" ${isSup() ? '' : 'hidden'}>${v.level === 'bad'
+    <div class="row" style="flex-wrap:wrap" ${canLead() ? '' : 'hidden'}>${v.level === 'bad'
       ? `<button class="btn bad grow" data-act="logCheck" data-d="Stopped from task" ${state.canWrite ? '' : 'disabled'}>Stop from this task</button>${genOK && taskId !== 'general' ? `<button class="btn grow" data-act="logCheck" data-d="General work only" ${state.canWrite ? '' : 'disabled'}>General work only</button>` : ''}`
       : `<button class="btn good grow" data-act="logCheck" data-d="Allowed on task" ${state.canWrite ? '' : 'disabled'}>Allow on this task</button>`}</div>
     <section><div class="sec-h"><h3>Everything on file</h3></div><div class="list">${all.map(c => { const st = compStatus(w, c); return `<div class="req"><span class="n">${esc(COMPS[c].name)}</span>${stChip(st.s)}<span class="d">${esc(st.label)}${COMPS[c].note ? ' · ' + esc(COMPS[c].note) : ''}</span></div>`; }).join('')}</div></section>
@@ -1292,44 +1329,70 @@ function sheetPush(s) {
 function sheetTeam(s) {
   const sid = s.site; const site = SITES[sid];
   const back = s.from === 'settings' ? `<button class="link" data-act="setPage" data-v="sites" style="align-self:flex-start">← Sites and notifications</button>` : '';
-  if (!site) return { title: 'Site team', body: back + '<div class="empty">This site is closed.</div>' };
-  const mgr = isAdmin() || isManager(sid); const on = siteNotifyOn(sid); const an = adminName();
+  if (!site) return { title: 'Site team', body: back + '<div class="empty">This site is closed, or you are not on it.</div>' };
+  const mgr = canManage(sid); const on = siteNotifyOn(sid); const an = adminName();
   const pend = REQUESTS.find(r => r.kind === 'notify' && r.site === sid && r.status === 'pending');
-  const team = teamOf(sid).filter(m => WORKER[m.pid]).sort((a, b) => (a.role === b.role ? 0 : a.role === 'manager' ? -1 : 1) || WORKER[a.pid].name.localeCompare(WORKER[b.pid].name));
+  const order = { manager: 0, supervisor: 1, member: 2 };
+  const team = teamOf(sid).filter(m => WORKER[m.pid]).sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || WORKER[a.pid].name.localeCompare(WORKER[b.pid].name));
+  const division = mgr
+    ? `<div class="field"><label for="tmDiv">Division</label><select id="tmDiv" data-sitediv="${esc(sid)}">${site.division ? '' : '<option value="" selected>Choose a division</option>'}${site.division && !DIVISIONS.includes(site.division) ? `<option selected>${esc(site.division)}</option>` : ''}${DIVISIONS.map(d => `<option ${d === site.division ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>`
+    : `<p class="muted small">Division: ${esc(site.division || 'not set yet')}</p>`;
   const notif = canSwitchNotify(sid)
     ? `<button class="toggle card" data-act="siteNotify" aria-pressed="${on}"><span class="grow"><b>Notifications for this site</b><span class="s muted small" style="display:block">${on ? 'On. Everyone on the team below gets them.' : 'Off. The team gets none for this site.'} ${isAdmin() ? 'You get them either way.' : esc(an) + ' gets them either way.'}</span></span><span class="sw ${on ? 'on' : ''}" aria-hidden="true"></span></button>`
     : `<div class="card stack" style="gap:8px"><div class="row"><b class="grow">Notifications for this site</b>${on ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</div>
       <p class="muted small">${on ? 'Everyone on the team below gets them.' : 'The team gets none for this site.'} ${esc(an)} gets them either way.</p>
-      ${mgr ? (pend ? `<span class="chip warn" style="align-self:flex-start;white-space:normal">Asked to switch ${pend.on ? 'on' : 'off'} · waiting for ${esc(an)}</span>` : `<button class="btn sm" data-act="siteNotify" style="align-self:flex-start">Ask to switch them ${on ? 'off' : 'on'}</button><p class="muted small">${esc(an)} approves this.</p>`) : '<p class="muted small">Only the site manager can ask to change this.</p>'}</div>`;
+      ${isManager(sid) && isSup() ? (pend ? `<span class="chip warn" style="align-self:flex-start;white-space:normal">Asked to switch ${pend.on ? 'on' : 'off'} · waiting for ${esc(an)}</span>` : `<button class="btn sm" data-act="siteNotify" style="align-self:flex-start">Ask to switch them ${on ? 'off' : 'on'}</button><p class="muted small">${esc(an)} approves this.</p>`) : '<p class="muted small">Only the site manager can ask to change this.</p>'}</div>`;
+  const pick = mgr && s.pick && WORKER[s.pick] ? (() => { const cur = siteRoleOf(sid, s.pick);
+    return `<section class="card stack lvlpick" style="gap:8px"><h3>Access level for ${esc(WORKER[s.pick].name)}</h3><p class="muted small">${cur ? 'Now: ' + esc(LEVEL_NAME[cur]) : 'Choose what they can do on ' + esc(site.name) + '.'}</p><div class="list">${LEVELS.map(l => { const why = levelWhyNot(s.pick, l.v);
+      return `<button class="li lvl ${cur === l.v ? 'on' : ''}" data-act="teamSet" data-id="${esc(s.pick)}" data-v="${l.v}" ${why || cur === l.v ? 'disabled' : ''}><span class="grow"><b>${l.name}</b><span class="s" style="display:block">${esc(why || l.d)}</span></span>${cur === l.v ? '<span class="chip good">Now</span>' : ''}</button>`; }).join('')}</div><button class="btn ghost" data-act="teamPickCancel">Cancel</button></section>`; })() : '';
   const rows = team.map(m => { const w = WORKER[m.pid]; const me = m.pid === ME.id; const edit = mgr && (isAdmin() || !me);
-    return `<div class="li" style="flex-wrap:wrap"><span class="grow"><span class="t">${esc(w.name)}${me ? ' (you)' : ''}</span><span class="s" style="display:block">${esc(w.role)}</span></span>${m.role === 'manager' ? '<span class="chip good">Manager</span>' : '<span class="chip">Team</span>'}
-      ${edit ? `<div class="rowbtns" style="width:100%">${m.role === 'manager' ? `<button class="btn sm" data-act="teamSet" data-id="${esc(m.pid)}" data-v="member">Make team member</button>` : roleOf(m.pid) !== 'worker' ? `<button class="btn sm" data-act="teamSet" data-id="${esc(m.pid)}" data-v="manager">Make manager</button>` : ''}<button class="btn sm ghost" data-act="teamSet" data-id="${esc(m.pid)}" data-v="remove">${state._tmArmed === m.pid ? 'Tap again to remove' : 'Remove'}</button></div>` : ''}</div>`; }).join('');
+    return `<div class="li" style="flex-wrap:wrap"><span class="grow"><span class="t">${esc(w.name)}${me ? ' (you)' : ''}</span><span class="s" style="display:block">${esc(w.role)}</span></span><span class="chip ${m.role === 'member' ? '' : 'good'}">${esc(LEVEL_NAME[m.role] || 'Team member')}</span>
+      ${edit ? `<div class="rowbtns" style="width:100%"><button class="btn sm" data-act="teamPick" data-id="${esc(m.pid)}">Change access</button><button class="btn sm ghost" data-act="teamSet" data-id="${esc(m.pid)}" data-v="remove">${state._tmArmed === m.pid ? 'Tap again to remove' : 'Remove'}</button></div>` : ''}</div>`; }).join('');
   const q = (state.teamQuery || '').trim().toLowerCase(); const inTeam = new Set(team.map(m => m.pid));
   const finds = !mgr || q.length < 2 ? [] : CREW.filter(w => !inTeam.has(w.id) && w.name.toLowerCase().includes(q)).slice(0, 6);
-  const add = mgr ? `<div class="field"><label for="teamSearch">Add someone to the team</label><input id="teamSearch" type="search" placeholder="Type a name" value="${esc(state.teamQuery || '')}" data-bind="teamQuery" autocomplete="off"></div>${finds.length ? `<div class="list">${finds.map(w => `<div class="li"><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)}</span></span><button class="btn sm" data-act="teamSet" data-id="${esc(w.id)}" data-v="member">Add</button></div>`).join('')}</div>` : ''}` : '';
-  return { title: site.name, body: back + notif + `<section><div class="sec-h"><h3>Team</h3><span class="muted small num">${team.length}</span></div>${team.length ? `<div class="list">${rows}</div>` : '<div class="empty">Nobody yet. Signing people in to this site adds them.</div>'}</section>` + add + `<p class="muted small">Signing someone in to this site adds them to the team. ${isAdmin() ? 'You get' : esc(an) + ' gets'} every notification from every site.</p>` };
+  const add = mgr ? `<div class="field"><label for="teamSearch">Add someone to the team</label><input id="teamSearch" type="search" placeholder="Type a name" value="${esc(state.teamQuery || '')}" data-bind="teamQuery" autocomplete="off"></div>${finds.length ? `<div class="list">${finds.map(w => `<div class="li"><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)}</span></span><button class="btn sm" data-act="teamPick" data-id="${esc(w.id)}">Add</button></div>`).join('')}</div>` : ''}` : '';
+  return { title: site.name, body: back + division + notif + pick + `<section><div class="sec-h"><h3>Team</h3><span class="muted small num">${team.length}</span></div>${team.length ? `<div class="list">${rows}</div>` : '<div class="empty">Nobody yet. Signing people in to this site adds them.</div>'}</section>` + add
+    + `<p class="muted small">Only people on the team see this site. Signing someone in adds them as a team member. ${isAdmin() ? 'You see and get' : esc(an) + ' sees and gets'} everything from every site.</p>` };
 }
 function sheetSite() {
   const list = `<div class="list">${Object.values(SITES).map(s => { const r = readiness(s.id); return `<button class="li" data-act="setSite" data-id="${s.id}"><span class="grow"><span class="t">${esc(s.name)}</span><span class="s" style="display:block">${esc(s.kind)} · ${r.good + r.warn + r.bad} ${SUPA ? 'signed in today' : 'people'} · ${r.bad} not cleared</span></span>${s.id === state.site ? '<span class="chip good">Current</span>' : ''}</button>`; }).join('')}</div>`;
   if (!SUPA) return { title: 'Switch team or project', body: list };
+  const row = x => { const r = readiness(x.id); const k = siteNew(x.id); return `<button class="li" data-act="setSite" data-id="${x.id}"><span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)} · ${r.good + r.warn + r.bad} signed in today</span></span>${k ? `<span class="newdot">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Current</span>' : ''}</button>`; };
+  const grouped = [...DIVISIONS, ''].map(d => ({ d, l: Object.values(SITES).filter(x => d ? x.division === d : !DIVISIONS.includes(x.division)) })).filter(g => g.l.length)
+    .map(g => `<p class="eyebrow" style="margin:4px 2px -4px">${esc(g.d || 'No division yet')}</p><div class="list">${g.l.map(row).join('')}</div>`).join('');
   const projects = (DATA.projects || []).map(p => p.n);
-  const newSite = isSup() ? `<section class="card stack" style="gap:10px"><h3>Create a site</h3>
+  const newSite = canAddPeople() ? `<section class="card stack" style="gap:10px"><h3>Create a site</h3>
+      <div class="field"><label for="nsDiv">Division</label><select id="nsDiv"><option value="">Choose a division</option>${DIVISIONS.map(d => `<option ${d === state.newDiv ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>
       <div class="field"><label for="nsName">Site name</label><input id="nsName" placeholder="For example: Parliament – Cape Town"></div>
       <div class="field"><label for="nsProject">Project (optional)</label><select id="nsProject"><option value="">No project</option>${projects.map(n => `<option>${esc(n)}</option>`).join('')}</select></div>
       <div class="field"><label for="nsArea">Area or address (optional)</label><input id="nsArea" placeholder="For example: 90 Plein Street, Cape Town"></div>
       <button class="btn dark" data-act="createSite">Create site</button></section>` : '';
-  const close = isSup() && state.site && (isAdmin() || isManager(state.site) || (siteRow(state.site) || {}).createdBy === ME.id) ? `<button class="btn ghost" data-act="closeSite">${state._closeArmed ? 'Tap again to close ' + esc(curSite().short) : 'Close this site (work finished)'}</button>` : '';
-  return { title: 'Switch site', body: (Object.keys(SITES).length ? list : '<div class="empty">No sites yet.</div>') + newSite + close };
+  const close = state.site && (canManage(state.site) || ((siteRow(state.site) || {}).createdBy === ME.id && canAddPeople())) ? `<button class="btn ghost" data-act="closeSite">${state._closeArmed ? 'Tap again to close ' + esc(curSite().short) : 'Close this site (work finished)'}</button>` : '';
+  return { title: 'Switch site', body: (Object.keys(SITES).length ? grouped : `<div class="empty">${isAdmin() ? 'No sites yet.' : 'You are not on any site yet.'}</div>`) + newSite + close };
 }
 function pushPrompt() {
   if (!SUPA || !['off', 'ios'].includes(state.push) || store.get('hsoc-push-nag', '') === ME.id) return '';
   return `<section class="card row" style="gap:12px;align-items:flex-start"><span class="av">${ic('bell')}</span><div class="grow stack" style="gap:8px"><div><b>Turn on notifications</b><p class="muted small" style="margin-top:2px">${isAdmin() ? 'Get a message on this phone for everything that happens on every site.' : 'Get a message on this phone when something happens on your sites.'}</p></div><div class="rowbtns"><button class="btn sm dark" data-act="pushSheet">Turn on</button><button class="btn sm ghost" data-act="pushLater">Not now</button></div></div></section>`;
 }
+function divisionsHTML() {
+  if (!SUPA) return '';
+  const all = Object.values(SITES);
+  const groups = DIVISIONS.map(d => ({ name: d, sites: all.filter(x => x.division === d) }));
+  const other = all.filter(x => !DIVISIONS.includes(x.division)); if (other.length) groups.push({ name: 'No division yet', sites: other, none: true });
+  const show = groups.filter(g => g.sites.length || (isAdmin() && !g.none));
+  if (!show.length) return '';
+  const open = store.get('hsoc-div-open', []) || [];
+  return `<section><div class="sec-h"><h3>Divisions</h3><span class="muted small">${isAdmin() ? 'Every site' : 'Your sites'}</span></div><div class="list">${show.map(g => {
+    const n = g.sites.reduce((t, x) => t + siteNew(x.id), 0); const isOpen = open.includes(g.name);
+    return `<button class="li divh" data-act="divToggle" data-v="${esc(g.name)}" aria-expanded="${isOpen}"><span class="grow"><span class="t">${esc(g.name)}</span><span class="s" style="display:block">${g.sites.length} site${g.sites.length === 1 ? '' : 's'}${n ? ' · new activity' : ''}</span></span>${n ? `<span class="newdot" aria-label="${n} new">${n > 9 ? '9+' : n}</span>` : ''}<span class="chev">${ic('chev')}</span></button>${isOpen ? `<div class="divsites">${g.sites.length ? g.sites.map(x => { const k = siteNew(x.id); return `<button class="li" data-act="divSite" data-id="${esc(x.id)}"><span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)}${isAdmin() ? '' : ' · ' + esc(LEVEL_NAME[siteRoleOf(x.id)] || 'Team member')}</span></span>${k ? `<span class="newdot" aria-label="${k} new">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Open</span>' : ''}</button>`; }).join('') : `<div class="li"><span class="grow muted small">No sites yet</span>${canAddPeople() && !g.none ? `<button class="btn sm" data-act="newSiteIn" data-v="${esc(g.name)}">Create one</button>` : ''}</div>`}</div>` : ''}`;
+  }).join('')}</div></section>`;
+}
 function viewNoSite() {
   return `<div class="page gut"><div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Hello, ${esc(ME.name.split(' ')[0])}</h1></div>
     ${pushPrompt()}
-    <div class="card stack" style="gap:10px"><h2>No site set up yet</h2><p class="muted">${isSup() ? 'Create the first site, then sign your team in to it each morning.' : 'Your supervisor creates sites and signs the team in each morning. You can still report an incident.'}</p>
-    ${isSup() ? '<button class="btn dark" data-act="switchSite">Create a site</button>' : '<button class="btn" data-act="startFlow" data-flow="incident">Report incident</button>'}</div></div>`;
+    ${divisionsHTML()}
+    <div class="card stack" style="gap:10px"><h2>${isAdmin() ? 'No site set up yet' : 'You are not on a site yet'}</h2><p class="muted">${canAddPeople() ? 'Create a site under its division, then sign your team in to it each morning.' : isSup() ? `Ask ${esc(adminName())} or the site manager to add you to a site.` : 'Your supervisor adds you to a site when you start there. You can still report an incident.'}</p>
+    ${canAddPeople() ? '<button class="btn dark" data-act="switchSite">Create a site</button>' : '<button class="btn" data-act="startFlow" data-flow="incident">Report incident</button>'}</div></div>`;
 }
 function hydratePhotos(root) {
   root.querySelectorAll('img[data-photo]:not([src])').forEach(async img => {
@@ -1416,7 +1479,7 @@ $('#photoFile').addEventListener('change', async e => {
 /* ================= flows: start / submit ================= */
 function nowLocalInput() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); }
 function startFlow(f, tpl) {
-  if (f !== 'incident' && !isSup()) { toast('Only supervisors can do this. Sign in with your PIN from the menu.'); return; }
+  if (f !== 'incident' && !canLead()) { toast(isSup() ? 'You are a team member on this site. The site manager can make you a supervisor here.' : 'Only supervisors can do this. Sign in with your PIN from the menu.'); return; }
   if (SUPA && f !== 'incident' && !state.site) { toast('Choose or create a site first.'); state.sheet = { kind: 'site' }; renderSheet(); return; }
   discardArmed = false; state.flow = f;
   if (f === 'inspect') state.draft = { template: null, items: [], photos: [], signature: null, _photos: {} };
@@ -1480,7 +1543,7 @@ function applyFeed(f, quiet) {
   if (!quiet) maybePopups();
 }
 async function loadFeed() {
-  try { const f = await rpc('hs_feed'); if (!f) return; const sig = JSON.stringify([f.requests.map(r => r.id + r.status), f.appointments.map(a => a.id + a.status), f.needs]); if (sig !== state._feedSig) { state._feedSig = sig; const needsChanged = JSON.stringify(f.needs) !== JSON.stringify(NEEDS); applyFeed(f, true); const unk = [...new Set([...f.requests, ...f.appointments].map(x => x.person).filter(id => id && !WORKER[id]))].join(); if (unk && unk !== state._unk) { state._unk = unk; await refreshBoot(); } if (needsChanged) initData(DATA); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } maybePopups(); } catch {}
+  try { const f = await rpc('hs_feed', who()); if (!f) return; const sig = JSON.stringify([f.requests.map(r => r.id + r.status), f.appointments.map(a => a.id + a.status), f.needs]); if (sig !== state._feedSig) { state._feedSig = sig; const needsChanged = JSON.stringify(f.needs) !== JSON.stringify(NEEDS); const fresh = isAdmin() && f.requests.some(r => !REQUESTS.some(x => x.id === r.id)); applyFeed(f, true); if (fresh) await refreshBoot(); const unk = [...new Set([...f.requests, ...f.appointments].map(x => x.person).filter(id => id && !WORKER[id]))].join(); if (unk && unk !== state._unk) { state._unk = unk; await refreshBoot(); } if (needsChanged) initData(DATA); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } maybePopups(); } catch {}
 }
 function noteKnownRequests() { state.knownReq = state.knownReq || {}; REQUESTS.forEach(r => { state.knownReq[r.id] = r.status; }); state.seenAppt = state.seenAppt || new Set(store.get('hsoc-seen-appt', [])); }
 function maybePopups() {
@@ -1517,7 +1580,7 @@ function workerExtras(w) {
     out.push(`<div class="banner info">Added on site${by ? ' by ' + esc(by.name) : ''}${p.addedAt ? ' on ' + esc(fmtDate(p.addedAt)) : ''}. Not loaded on the H&amp;S on Command platform yet.</div>`);
     if (isSup()) out.push(`<dl class="kv"><dt>ID number</dt><dd class="mono">${esc(p.idNo || 'Not captured')}</dd><dt>Cellphone</dt><dd>${esc(p.cell || '—')}</dd><dt>Company</dt><dd>${esc(p.company || '—')}</dd>${p.induction ? `<dt>Site induction</dt><dd>${esc(fmtDate(p.induction.date))}</dd>` : ''}</dl>${p.idPhoto ? `<div class="thumbs"><img data-photo="${esc(p.idPhoto)}" alt="ID document"></div>` : ''}${!p.idNo && !p.idPhoto ? `<div class="banner">No ID captured yet. <button class="link" data-act="addIdSheet" data-id="${esc(p.id)}">Add ID now</button></div>` : ''}`);
   }
-  if (isSup() && state.site) {
+  if (canLead() && state.site) {
     const present = (state.att[state.site] || []).some(x => x.id === w.id);
     out.push(`<div class="rowbtns">${present ? `<button class="btn sm" data-act="attRemove" data-id="${esc(w.id)}">Remove from today’s site</button>` : `<button class="btn sm dark" data-act="attAdd" data-id="${esc(w.id)}">Sign in to ${esc(curSite().short)}</button>`}<button class="btn sm" data-act="requestSheet" data-id="${esc(w.id)}">Request appointment or certificates</button></div>`);
   }
@@ -1528,7 +1591,7 @@ function workerExtras(w) {
 function certSection(w) {
   if (!SUPA || !w.onsite) return '';
   const p = w.person; const certs = p.certs || [];
-  return `<section><div class="sec-h"><h3>Certificates brought on site</h3>${isSup() ? `<button class="link" data-act="addCertSheet" data-id="${esc(p.id)}">Add certificate</button>` : ''}</div>
+  return `<section><div class="sec-h"><h3>Certificates brought on site</h3>${canLead() ? `<button class="link" data-act="addCertSheet" data-id="${esc(p.id)}">Add certificate</button>` : ''}</div>
     ${certs.length ? `<div class="list">${certs.map(c => `<div class="req"><span class="n">${esc((COMPS[c.code] && COMPS[c.code].name) || c.code)}</span>${c.status === 'confirmed' ? '<span class="chip good">Confirmed</span>' : c.status === 'rejected' ? '<span class="chip bad">Rejected</span>' : '<span class="chip warn">Awaiting check</span>'}<span class="d">${c.exp ? 'Expires ' + esc(fmtDate(c.exp)) : 'No expiry given'}</span>${c.photo ? `<div class="thumbs" style="grid-column:1/-1"><img data-photo="${esc(c.photo)}" alt="Certificate"></div>` : ''}${isAdmin() && c.status === 'awaiting' ? `<div class="rowbtns" style="grid-column:1/-1"><button class="btn sm good" data-act="reviewCert" data-p="${esc(p.id)}" data-c="${esc(c.id)}" data-s="confirmed">Confirm</button><button class="btn sm" data-act="reviewCert" data-p="${esc(p.id)}" data-c="${esc(c.id)}" data-s="rejected">Reject</button></div>` : ''}</div>`).join('')}</div>` : '<div class="empty">No certificates captured.</div>'}</section>`;
 }
 function adminPersonActions(w) {
@@ -1662,7 +1725,7 @@ function sheetSettings(s) {
     const finds = q.length < 2 ? [] : CREW.filter(w => !w.onsite && roleOf(w.id) === 'worker' && w.name.toLowerCase().includes(q)).slice(0, 6);
     return { title: 'Supervisors and PINs', body: back + `<p class="muted small">Supervisors sign in with a 4-digit PIN that you set and give them. Only you can approve appointments.</p>
       <div class="list">${holders.map(r => `<div class="li" style="flex-wrap:wrap"><span class="grow"><span class="t">${esc(WORKER[r.pid].name)}</span><span class="s" style="display:block">${r.role === 'admin' ? 'Safety Manager' : 'Supervisor'} · ${r.hasPin ? 'PIN set' : 'No PIN yet'}</span></span>
-        <div class="addrow" style="width:100%"><input id="pin-${r.pid}" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" aria-label="New PIN for ${esc(WORKER[r.pid].name)}"><button class="btn sm dark" data-act="setPin" data-id="${r.pid}">Set PIN</button>${r.role === 'supervisor' ? `<button class="btn sm" data-act="makeRole" data-id="${r.pid}" data-v="worker">Remove</button>` : ''}</div>${r.role === 'supervisor' ? `<button class="toggle" data-act="permNotify" data-id="${r.pid}" aria-pressed="${hasPerm(r.pid, 'notify')}" style="padding:2px 0"><span class="grow small">May switch notifications for sites they manage without asking you</span><span class="sw ${hasPerm(r.pid, 'notify') ? 'on' : ''}" aria-hidden="true"></span></button>` : ''}</div>`).join('')}</div>
+        <div class="addrow" style="width:100%"><input id="pin-${r.pid}" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" aria-label="New PIN for ${esc(WORKER[r.pid].name)}"><button class="btn sm dark" data-act="setPin" data-id="${r.pid}">Set PIN</button>${r.role === 'supervisor' ? `<button class="btn sm" data-act="makeRole" data-id="${r.pid}" data-v="worker">Remove</button>` : ''}</div>${r.role === 'supervisor' ? `<button class="toggle" data-act="permSet" data-perm="sites" data-id="${r.pid}" aria-pressed="${hasPerm(r.pid, 'sites')}" style="padding:2px 0"><span class="grow small">May create sites, manage site teams and add new people</span><span class="sw ${hasPerm(r.pid, 'sites') ? 'on' : ''}" aria-hidden="true"></span></button><button class="toggle" data-act="permSet" data-perm="notify" data-id="${r.pid}" aria-pressed="${hasPerm(r.pid, 'notify')}" style="padding:2px 0"><span class="grow small">May switch notifications for sites they manage without asking you</span><span class="sw ${hasPerm(r.pid, 'notify') ? 'on' : ''}" aria-hidden="true"></span></button>` : ''}</div>`).join('')}</div>
       <div class="field"><label for="roleSearch">Make someone a supervisor</label><input id="roleSearch" type="search" placeholder="Type a name" value="${esc(state.roleQuery || '')}" data-bind="roleQuery" autocomplete="off"></div>
       ${finds.length ? `<div class="list">${finds.map(w => `<div class="li"><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)}</span></span><button class="btn sm" data-act="makeRole" data-id="${w.id}" data-v="supervisor">Make supervisor</button></div>`).join('')}</div>` : ''}` };
   }
@@ -1680,7 +1743,7 @@ function sheetSettings(s) {
     const dailyOpts = [{ key: 'dsti', label: 'DSTI' }, { key: 'toolbox', label: 'Toolbox talk' }, ...L.templates.filter(t => t.name.trim()).map(t => ({ key: 'tpl:' + t.id, label: t.name }))];
     return { title: 'Lists', body: back + `<p class="muted small">Changes reach every phone within about a minute.</p>
       <div class="field"><span class="lab">Daily checklist</span><div class="list">${dailyOpts.map(o => `<label class="chk"><input type="checkbox" data-lchk="${esc(o.key)}" ${L.daily.includes(o.key) ? 'checked' : ''}><span>${esc(o.label)}</span></label>`).join('')}</div></div>
-      ${ta('hazards', 'DSTI hazards')}${ta('controls', 'DSTI controls')}${ta('ppe', 'PPE')}${ta('topics', 'Toolbox talk topics')}
+      ${ta('divisions', 'Divisions (sites are grouped under these)')}${ta('hazards', 'DSTI hazards')}${ta('controls', 'DSTI controls')}${ta('ppe', 'PPE')}${ta('topics', 'Toolbox talk topics')}
       <div class="field"><span class="lab">Inspection checklists</span>${L.templates.map((t, i) => `<div class="tplbox"><input data-ltpl="${i}" data-f="name" value="${esc(t.name)}" placeholder="Checklist name" aria-label="Checklist name"><textarea class="lstext" data-ltpl="${i}" data-f="items" aria-label="Checks, one per line">${esc(t.items.join('\n'))}</textarea><button class="btn sm" data-act="listDelTpl" data-i="${i}">Remove this checklist</button></div>`).join('')}<button class="btn sm" data-act="listAddTpl">${ic('plus')}Add a checklist</button></div>
       <div class="field"><span class="lab">Job types for staff checks</span><span class="muted small">Certificate codes from the platform, for example C01, C23, M03.</span>${L.jobs.map((j, i) => `<div class="tplbox"><input data-ljob="${i}" data-f="name" value="${esc(j.name)}" placeholder="Job name" aria-label="Job name"><input data-ljob="${i}" data-f="req" value="${esc(j.req.join(', '))}" placeholder="C01, C23, M03" aria-label="Certificate codes"><span class="muted small">${esc(j.req.map(c => COMPS[c] ? COMPS[c].name : c + ' (unknown code)').join(' · '))}</span><button class="btn sm" data-act="listDelJob" data-i="${i}">Remove this job type</button></div>`).join('')}<button class="btn sm" data-act="listAddJob">${ic('plus')}Add a job type</button></div>
       ${errLine(s)}<button class="btn hivis block" data-act="saveLists">Save lists</button>` };
@@ -1688,7 +1751,7 @@ function sheetSettings(s) {
   return { title: 'Settings', body: back };
 }
 function listsDraft() {
-  return { daily: DAILY.map(x => x.flow === 'inspect' ? 'tpl:' + x.tpl : x.flow), hazards: HAZARDS.slice(), controls: CONTROLS.slice(), ppe: PPE.slice(), topics: TOPICS.slice(),
+  return { daily: DAILY.map(x => x.flow === 'inspect' ? 'tpl:' + x.tpl : x.flow), divisions: DIVISIONS.slice(), hazards: HAZARDS.slice(), controls: CONTROLS.slice(), ppe: PPE.slice(), topics: TOPICS.slice(),
     templates: TEMPLATES.map(t => ({ id: t.id, name: t.name, items: t.items.slice() })), jobs: TASKS.filter(t => t.id !== 'role').map(t => ({ id: t.id, name: t.name, req: t.req.slice() })) };
 }
 async function saveLists() {
@@ -1698,7 +1761,9 @@ async function saveLists() {
   const jobs = L.jobs.map(j => ({ id: j.id, name: j.name.trim(), req: j.req.map(c => c.trim().toUpperCase()).filter(Boolean) })).filter(j => j.name || j.req.length);
   if (!s.err && jobs.some(j => !j.name || !j.req.length || j.req.some(c => !COMPS[c]))) s.err = 'Each job type needs a name and valid certificate codes.';
   if (s.err) { renderSheet(); return; }
-  const body = { hazards: L.hazards, controls: L.controls, ppe: L.ppe, topics: L.topics, templates: tpls, jobs,
+  if (!s.err && !(L.divisions || []).length) s.err = 'Keep at least one division.';
+  if (s.err) { renderSheet(); return; }
+  const body = { divisions: L.divisions, hazards: L.hazards, controls: L.controls, ppe: L.ppe, topics: L.topics, templates: tpls, jobs,
     daily: L.daily.map(k => k.startsWith('tpl:') ? { flow: 'inspect', tpl: k.slice(4) } : { flow: k }).filter(x => x.flow !== 'inspect' || tpls.some(t => t.id === x.tpl)) };
   try { await rpc('hs_set_lists', { tok: state.tok, lists: body }); applyLists({ ...body, hidden: [...HIDDEN] }); toast('Lists saved.'); state.sheet = { kind: 'settings', page: 'main' }; renderSheet(); onData(); refreshBoot(); }
   catch (e) { s.err = e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not save. Check your signal and try again.'; renderSheet(); }
@@ -1712,8 +1777,8 @@ const H = {
   pinAgain: () => { state.sheet = null; renderSheet(); state.needPin = true; state.pinErr = ''; render(); },
   settings: () => { state.sheet = { kind: 'settings', page: 'main' }; renderSheet(); },
   setPage: el => { const s = { kind: 'settings', page: el.dataset.v }; if (el.dataset.v === 'lists') s.ld = listsDraft(); if (el.dataset.v === 'code') { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = n => Array.from({ length: n }, () => a[Math.floor(Math.random() * a.length)]).join(''); s.newCode = 'HAR-' + r(4) + '-' + r(4); } state._codeArmed = false; state.sheet = s; renderSheet(); },
-  signInSheet: () => { if (!state.site) { state.sheet = { kind: 'site' }; renderSheet(); return; } state.siQuery = ''; state.sheet = { kind: 'signin', focus: 'siSearch' }; renderSheet(); },
-  addPersonSheet: () => { if (!state.site) { toast('Choose a site first.'); return; } state.sheet = { kind: 'addPerson', d: { name: '', idNo: '', idPhoto: '', company: '', trade: '', cell: '', inductionSig: null, err: '' } }; renderSheet(); },
+  signInSheet: () => { if (state.site && !canLead()) { toast('Only supervisors on this site can sign people in.'); return; } if (!state.site) { state.sheet = { kind: 'site' }; renderSheet(); return; } state.siQuery = ''; state.sheet = { kind: 'signin', focus: 'siSearch' }; renderSheet(); },
+  addPersonSheet: () => { if (!canAddPeople()) { toast('Only staff ' + adminName() + ' allows can add new people.'); return; } if (!state.site) { toast('Choose a site first.'); return; } state.sheet = { kind: 'addPerson', d: { name: '', idNo: '', idPhoto: '', company: '', trade: '', cell: '', inductionSig: null, err: '' } }; renderSheet(); },
   attAdd: async el => { const ok = await attSet(el.dataset.id, true); if (ok) { toast((WORKER[el.dataset.id]?.name || 'Person') + ' signed in to ' + curSite().short); renderSheet(); } },
   attRemove: async el => { const ok = await attSet(el.dataset.id, false); if (ok) { toast('Removed from today’s site'); renderSheet(); } },
   idPhoto: () => { photoTarget = 'idphoto'; $('#photoFile').click(); },
@@ -1805,11 +1870,12 @@ const H = {
   listDelJob: el => { state.sheet.ld.jobs.splice(+el.dataset.i, 1); renderSheet(); },
   saveLists: () => saveLists(),
   createSite: async el => {
+    const division = ($('#nsDiv') || {}).value || ''; if (!division) { toast('Choose the division this site falls under.'); $('#nsDiv').focus(); return; }
     const name = ($('#nsName').value || '').trim(); if (!name) { toast('Give the site a name.'); return; }
-    const site = { id: 's' + uid(), name, project: $('#nsProject').value || '', area: ($('#nsArea').value || '').trim(), active: true, createdBy: ME.id, createdAt: new Date().toISOString() };
+    const site = { id: 's' + uid(), name, division, project: $('#nsProject').value || '', area: ($('#nsArea').value || '').trim(), active: true, createdBy: ME.id, createdAt: new Date().toISOString() };
     el.disabled = true;
-    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push({ ...site, notify: true }); MEMBERS.push({ site: site.id, pid: ME.id, role: 'manager' }); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.sheet = null; renderSheet(); render(); toast('Site created: ' + name); }
-    catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not create the site.'); el.disabled = false; }
+    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push({ ...site, notify: true }); MEMBERS.push({ site: site.id, pid: ME.id, role: 'manager' }); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.newDiv = ''; state.sheet = null; renderSheet(); render(); toast('Site created under ' + division + ': ' + name); }
+    catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only staff ' + adminName() + ' allows can create sites.' : 'Could not create the site.'); el.disabled = false; }
   },
   closeSite: async () => { if (!state._closeArmed) { state._closeArmed = true; renderSheet(); setTimeout(() => { state._closeArmed = false; if (state.sheet && state.sheet.kind === 'site') renderSheet(); }, 4000); return; } state._closeArmed = false; const x = SITE_LIST.find(v => v.id === state.site); try { await rpc('hs_put_site', { tok: state.tok, site: { ...x, active: false } }); x.active = false; buildSites(); state.sheet = null; render(); toast('Site closed'); } catch { toast('Could not close the site.'); } },
   dsAddHaz: el => addOneOff('hazards', el), dsAddCtl: el => addOneOff('controls', el), dsAddPpe: el => addOneOff('ppe', el),
@@ -1825,7 +1891,7 @@ const H = {
     if (e.kind === 'sign') { const a = APPTS.find(x => x.person === ME.id && x.status === 'to sign'); if (a) return go({ kind: 'appt', id: a.id }); }
     if (isAdmin() && (e.kind === 'sign' || e.kind === 'signed')) return go({ kind: 'settings', page: 'appts' });
     if (e.kind === 'notify' && isSup() && e.site && SITES[e.site]) return go({ kind: 'team', site: e.site });
-    if (e.site && SITES[e.site]) { state.site = e.site; store.set('sheq-site', e.site); state.tab = ['dsti', 'toolbox', 'inspection', 'incident', 'check'].includes(e.kind) ? 'activity' : 'home'; state.sheet = null; renderSheet(); renderNav(); renderMain(); renderOffice(); $('#main').scrollTop = 0; return; }
+    if (e.site && SITES[e.site]) { state.site = e.site; store.set('sheq-site', e.site); markSiteSeen(e.site); state.tab = ['dsti', 'toolbox', 'inspection', 'incident', 'check'].includes(e.kind) ? 'activity' : 'home'; state.sheet = null; renderSheet(); renderNav(); renderMain(); renderOffice(); $('#main').scrollTop = 0; return; }
     state.sheet = null; renderSheet();
   },
   pushSheet: () => { state.sheet = { kind: 'push' }; renderSheet(); refreshPushStatus(); },
@@ -1844,15 +1910,21 @@ const H = {
   pushTest: async el => { el.disabled = true; try { const ok = await rpc('hs_push_test', { tok: state.tok || null, me: ME.id }); toast(ok ? 'Test sent. It should arrive in a few seconds.' : 'This phone is not set up yet. Turn notifications off and on again.'); } catch { toast('Could not send the test. Check your signal.'); } el.disabled = false; },
   teamSheet: () => { if (!state.site) return; state.teamQuery = ''; state.sheet = { kind: 'team', site: state.site }; renderSheet(); },
   teamOpen: el => { state.teamQuery = ''; state.sheet = { kind: 'team', site: el.dataset.id, from: 'settings' }; renderSheet(); },
+  teamPick: el => { state.sheet.pick = el.dataset.id; renderSheet(); const c = document.querySelector('.sheet .lvlpick'); if (c) c.scrollIntoView({ block: 'nearest' }); },
+  teamPickCancel: () => { state.sheet.pick = null; renderSheet(); },
+  divToggle: el => { const open = store.get('hsoc-div-open', []) || []; const v = el.dataset.v; const i = open.indexOf(v); i > -1 ? open.splice(i, 1) : open.push(v); store.set('hsoc-div-open', open); renderMain(true); },
+  divSite: el => { const id = el.dataset.id; if (!SITES[id]) return; state.site = id; store.set('sheq-site', id); markSiteSeen(id); renderMain(true); renderOffice(); toast('Now on ' + curSite().name); const c = document.querySelector('.sitecard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+  newSiteIn: el => { state.newDiv = el.dataset.v; state.sheet = { kind: 'site' }; renderSheet(); const n = $('#nsName'); if (n) { n.scrollIntoView({ block: 'center' }); n.focus(); } },
   teamSet: async el => {
     const s = state.sheet; const pid = el.dataset.id, v = el.dataset.v;
     if (v === 'remove' && state._tmArmed !== pid) { state._tmArmed = pid; renderSheet(); setTimeout(() => { if (state._tmArmed === pid) { state._tmArmed = null; if (state.sheet && state.sheet.kind === 'team') renderSheet(); } }, 4000); return; }
     state._tmArmed = null; el.disabled = true;
     try {
-      const list = await rpc('hs_site_member', { tok: state.tok, site: s.site, pid, role: v === 'manager' ? 'manager' : 'member', keep: v !== 'remove' });
-      MEMBERS = MEMBERS.filter(m => m.site !== s.site).concat(Array.isArray(list) ? list : []); state.teamQuery = ''; renderSheet();
-      toast((WORKER[pid]?.name || 'Done') + (v === 'remove' ? ' is off the team' : v === 'manager' ? ' now manages this site' : ' is on the team'));
-    } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager or the Safety Manager can change the team.' : 'Could not save. Try again.'); el.disabled = false; }
+      const list = await rpc('hs_site_member', { tok: state.tok, site: s.site, pid, role: v === 'remove' ? 'member' : v, keep: v !== 'remove' });
+      const was = siteRoleOf(s.site, pid);
+      MEMBERS = MEMBERS.filter(m => m.site !== s.site).concat(Array.isArray(list) ? list : []); state.teamQuery = ''; s.pick = null; renderSheet(); renderMain(true);
+      toast((WORKER[pid]?.name || 'Done') + (v === 'remove' ? ' is off the team' : (was ? ' is now ' : ' added as ') + LEVEL_NAME[v]));
+    } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager or the Safety Manager can change the team.' : 'Could not save. ' + (e.status === 400 ? 'That access level is not allowed for them.' : 'Try again.')); el.disabled = false; }
   },
   siteNotify: async el => {
     const s = state.sheet; const sid = s.site; const want = !siteNotifyOn(sid); el.disabled = true;
@@ -1863,16 +1935,17 @@ const H = {
       renderSheet(); renderMain(true);
     } catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager can ask for this. Sign in with your PIN.' : 'Could not send. A request may already be waiting.'); el.disabled = false; }
   },
-  permNotify: async el => {
-    const pid = el.dataset.id, g = !hasPerm(pid, 'notify');
-    try { await rpc('hs_set_perm', { tok: state.tok, pid, perm: 'notify', granted: g }); PERMS = g ? PERMS.concat([{ pid, perm: 'notify' }]) : PERMS.filter(p => !(p.pid === pid && p.perm === 'notify')); renderSheet(); toast(g ? `${WORKER[pid]?.name || 'They'} can now switch notifications for their sites` : `${WORKER[pid]?.name || 'They'} must ask you first`); }
+  permSet: async el => {
+    const pid = el.dataset.id, perm = el.dataset.perm, g = !hasPerm(pid, perm); const nm = WORKER[pid]?.name || 'They';
+    try { await rpc('hs_set_perm', { tok: state.tok, pid, perm, granted: g }); PERMS = g ? PERMS.concat([{ pid, perm }]) : PERMS.filter(p => !(p.pid === pid && p.perm === perm)); renderSheet();
+      toast(perm === 'sites' ? (g ? `${nm} can now create sites and add people` : `${nm} can no longer create sites or add people`) : (g ? `${nm} can now switch notifications for their sites` : `${nm} must ask you first`)); }
     catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not save. Try again.'); }
   },
   hideDemo: () => { $('#demoBar').hidden = true; store.set('sheq-demo-hidden', true); },
   switchSite: () => { state.sheet = { kind: 'site' }; renderSheet(); },
   pickMe: el => { if (!setMe(el.dataset.id)) return; store.set('hsoc-me', ME.id); state.needSignIn = false; state.meQuery = ''; setTok('', 'worker'); if (SUPA && roleOf(ME.id) !== 'worker') { state.needPin = true; state.pinErr = ''; } const mine = Object.values(SITES).find(x => x.kind === 'Division' && x.members.includes(ME.id)); if (mine && !store.get('sheq-site', '')) state.site = mine.id; render(); toast('Signed in as ' + ME.name); },
   changeUser: () => { if (SUPA && state.tok) rpc('hs_logout', { tok: state.tok }).catch(() => {}); setTok('', 'worker'); state.needPin = false; state.sheet = null; renderSheet(); state.needSignIn = true; render(); },
-  setSite: el => { state.site = el.dataset.id; store.set('sheq-site', state.site); state.sheet = null; renderSheet(); renderMain(); renderOffice(); toast('Now on ' + curSite().name); },
+  setSite: el => { state.site = el.dataset.id; store.set('sheq-site', state.site); markSiteSeen(state.site); state.sheet = null; renderSheet(); renderMain(); renderOffice(); toast('Now on ' + curSite().name); },
   setTheme: el => { store.set('hsoc-theme', el.dataset.v); applyTheme(el.dataset.v); renderSheet(); },
   simOffline: () => { state.simOffline = !state.simOffline; renderSheet(); renderPill(); if (!state.simOffline) flush(); toast(state.simOffline ? 'No signal (simulated). Records will wait on the phone.' : 'Signal back. Sending waiting records.'); },
   crewFilter: el => { state.crewFilter = el.dataset.f; state.tab = 'crew'; renderNav(); renderMain(); },
@@ -1915,7 +1988,13 @@ document.addEventListener('change', e => {
   if (t.dataset.rq === 'ap') { const a = s.d.appointments; const i = a.indexOf(t.value); t.checked ? (i < 0 && a.push(t.value)) : (i > -1 && a.splice(i, 1)); }
   if (t.dataset.lchk) { const L = s.ld; const i = L.daily.indexOf(t.dataset.lchk); t.checked ? (i < 0 && L.daily.push(t.dataset.lchk)) : (i > -1 && L.daily.splice(i, 1)); }
   if (t.dataset.cbind) s.d[t.dataset.cbind] = t.value;
+  if (t.dataset.sitediv) setSiteDivision(t.dataset.sitediv, t.value);
 });
+async function setSiteDivision(sid, div) {
+  const x = siteRow(sid); if (!x || !div) return;
+  try { await rpc('hs_put_site', { tok: state.tok, site: { ...x, division: div } }); x.division = div; buildSites(); renderSheet(); renderMain(true); toast(`${x.name} is now under ${div}`); }
+  catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only the site manager or the Safety Manager can change this.' : 'Could not save. Try again.'); renderSheet(); }
+}
 document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('label[for="qrFile"]')) { e.preventDefault(); $('#qrFile').click(); }
   if (e.key === 'Escape' && state.sheet) { state.sheet = null; renderSheet(); }
@@ -1955,7 +2034,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
   if (m.hs === 'open') { state._openAlerts = true; maybeOpenAlerts(); }
 });
 { const pick = H.pickMe, cu = H.changeUser;
-  H.pickMe = el => { pick(el); state._evSig = ''; EVENTS = []; renderBell(); pushSync(); loadActivity(); };
+  H.pickMe = el => { pick(el); state._evSig = ''; EVENTS = []; buildSites(); renderBell(); pushSync(); loadActivity(); refreshBoot(); pullRecords(); loadAtt(); };
   H.changeUser = el => { pushRelease(); EVENTS = []; state._evSig = ''; cu(el); renderBell(); }; }
 if (DATA) initData(DATA);
 render();
