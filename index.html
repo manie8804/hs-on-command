@@ -494,6 +494,52 @@ const siteBaseKey = () => 'hsoc-site-base-' + (ME.id || '');
 function siteNew(sid) { const seen = store.get(siteSeenKey(), {}) || {}; const from = Math.max(+store.get(siteBaseKey(), 0) || 0, seen[sid] || 0); return EVENTS.filter(e => e.site === sid && e.id > from && e.actor !== ME.id).length; }
 function markSiteSeen(sid) { const top = EVENTS.filter(e => e.site === sid).reduce((m, e) => Math.max(m, e.id), 0); if (!top) return; const seen = store.get(siteSeenKey(), {}) || {}; if ((seen[sid] || 0) >= top) return; seen[sid] = top; store.set(siteSeenKey(), seen); }
 const who = () => ({ tok: state.tok || null, me: ME.id || store.get('hsoc-me', '') || null });
+/* ---------- who has the app and uses it (Office › App use, the Safety Manager only) ---------- */
+const APP_V = '2026-11-18';
+let seenBusy = false;
+function seenPing() {
+  if (!SUPA || !supaCk || seenBusy || !ME || !ME.id || isOffline()) return;
+  const k = 'hsoc-seen-' + ME.id; if (Date.now() - store.get(k, 0) < 30 * 60000) return;
+  const ua = navigator.userAgent; const platform = /iPad/.test(ua) ? 'iPad' : /iPhone|iPod/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Macintosh/.test(ua) ? 'Mac' : 'Other';
+  const installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  seenBusy = true;
+  rpc('hs_seen_ping', { tok: state.tok || null, me: ME.id, info: { installed, platform, version: APP_V } }).then(ok => { if (ok) store.set(k, Date.now()); }).catch(() => {}).finally(() => { seenBusy = false; });
+}
+let appUseAt = 0;
+async function loadAppUse(force) {
+  if (!SUPA || !isAdmin() || (!force && Date.now() - appUseAt < 60000)) return;
+  appUseAt = Date.now();
+  try { state.appUse = await rpc('hs_app_use', { tok: state.tok }); renderOffice(); if (state.tab === 'office' && !state.flow) renderMain(true); } catch {}
+}
+const TYPE_WORD = { dsti: ['DSTI', 'DSTIs'], inspection: ['inspection', 'inspections'], toolbox: ['toolbox talk', 'toolbox talks'], incident: ['incident', 'incidents'], check: ['staff check', 'staff checks'], photo: ['photo', 'photos'] };
+function appUseHTML() {
+  const u = state.appUse; if (!u) return `<section class="ocard"><h3>App use</h3><div class="empty">Loading…</div></section>`;
+  const seen = Object.fromEntries((u.seen || []).map(x => [x.pid, x]));
+  const staff = (DATA.staff || []).filter(e => !HIDDEN.has(e.id));
+  const rows = staff.map(e => {
+    const s = seen[e.id]; const logged = (u.logged || {})[e.id] || {}; const n30 = Object.values(logged).reduce((a, b) => a + b, 0);
+    const last = [s && s.last, (u.lastLog || {})[e.id], (u.pin || {})[e.id]].filter(Boolean).sort().pop() || null;
+    return { e, s, logged, n30, last, push: ((u.push || {})[e.id] || 0) > 0, sup: ['supervisor', 'admin'].includes(roleOf(e.id)) };
+  });
+  const used = rows.filter(r => r.last).sort((a, b) => b.last.localeCompare(a.last)); const never = rows.filter(r => !r.last).sort((a, b) => (b.sup - a.sup) || a.e.n.localeCompare(b.e.n));
+  const week = used.filter(r => daysAgo(r.last) <= 7).length; const inst = rows.filter(r => r.s && r.s.installed).length; const push = rows.filter(r => r.push).length;
+  const view = state.auView || 'never'; const list = view === 'never' ? never : used;
+  const what = r => Object.entries(r.logged).sort((a, b) => b[1] - a[1]).map(([t, n]) => n + ' ' + (TYPE_WORD[t] ? TYPE_WORD[t][n > 1 ? 1 : 0] : t)).join(', ');
+  const row = r => `<button class="li" data-act="openWorker" data-id="${esc(r.e.id)}"><span class="av">${esc(initials(r.e.n))}</span><span class="grow"><span class="t">${esc(r.e.n)}</span><span class="s" style="display:block">${r.last
+      ? esc(['Last used ' + fmtWhen(r.last), r.s ? (r.s.platform && r.s.platform !== 'Other' ? r.s.platform + ', ' : '') + (r.s.installed ? 'on the home screen' : 'in the browser') : '', r.push ? 'notifications on' : 'notifications off', r.n30 ? '30 days: ' + what(r) : 'nothing logged in 30 days'].filter(Boolean).join(' · '))
+      : esc((r.e.r || []).join(' / ') || r.e.d || '') + (r.sup ? ' · supervisor' + (ROLES[r.e.id] && ROLES[r.e.id].hasPin ? ', PIN set' : ', no PIN yet') : '')}</span></span>${r.last ? (daysAgo(r.last) <= 7 ? '<span class="chip good">Active</span>' : '<span class="chip warn">Quiet</span>') : (r.sup ? '<span class="chip bad">Not yet</span>' : '<span class="chip">Not yet</span>')}</button>`;
+  return `<section class="ocard"><h3>App use</h3>
+    <div class="kpis">
+      <div class="kpi"><b class="num">${used.length}<span class="muted" style="font-size:1rem"> / ${rows.length}</span></b><span>Staff who have used the app</span></div>
+      <div class="kpi"><b class="num">${inst}</b><span>On their home screen</span></div>
+      <div class="kpi"><b class="num">${week}</b><span>Used it in the last 7 days</span></div>
+      <div class="kpi"><b class="num">${push}</b><span>Notifications on</span></div>
+    </div>
+    <div class="seg">${[['never', 'Not used yet (' + never.length + ')'], ['used', 'Using it (' + used.length + ')']].map(([k, l]) => `<button class="${view === k ? 'on' : ''}" data-act="auView" data-v="${k}">${esc(l)}</button>`).join('')}</div>
+    ${list.length ? `<div class="feed">${list.map(row).join('')}</div>` : `<div class="empty">${view === 'never' ? 'Everyone has used the app.' : 'Nobody yet.'}</div>`}
+    <p class="muted small">Counted from the day the app started recording opens (18 Nov 2026); before that only what people logged and PIN sign-ins show. Home screen means opened from the app icon at least once.</p>
+  </section>`;
+}
 function addMonths(iso, m) { const d = new Date(iso + 'T00:00:00'); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); }
 function personToCrew(p) {
   const held = {};
@@ -892,7 +938,8 @@ function startPolling() {
   pullRecords();
   pollT = setInterval(() => { if (!document.hidden) pullRecords(); }, 15000);
   if (SUPA) { loadFeed(); setInterval(() => { if (!document.hidden) loadFeed(); }, 6000); setInterval(() => { if (!document.hidden) loadActivity(); }, 20000); }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { pullRecords(); if (SUPA) { loadFeed(); loadActivity(); refreshPushStatus(); } } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { pullRecords(); if (SUPA) { loadFeed(); loadActivity(); refreshPushStatus(); seenPing(); loadAppUse(); } } });
+  if (SUPA) setInterval(() => { if (!document.hidden) { seenPing(); if (wide.matches || state.tab === 'office') loadAppUse(); } }, 60000);
 }
 async function initCaps() {
   if (SUPA) { initSupa(); return; }
@@ -996,7 +1043,7 @@ function renderNav() {
 let toastT = null;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
 
-function render() { $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
+function render() { seenPing(); if (isAdmin() && !state.appUse) loadAppUse(); $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
 function viewCode() {
   return `<div class="signin gut">
     <div class="hero"><img src="${LOGO}" alt="${esc(COMPANY.short)}"><h1>H&amp;S on Command</h1><p>Enter your company code. You only do this once on this phone.</p></div>
@@ -1247,6 +1294,7 @@ function viewOffice() {
         ${findings.length || hz.length ? `<div class="feed">${hz.map(r => `<div class="li"><span class="typeic incident">${ic('alert')}</span><span class="grow"><span class="t">Unsafe: ${esc((r.note || '').slice(0, 90))}</span><span class="s" style="display:block">${esc(SITES[r.site]?.short || r.siteName || '')} · ${esc(r.by)} · ${esc(fmtWhen(r.createdAt))}${r.madeSafe ? ' · reported as made safe' : ''}</span></span><button class="btn sm" data-act="openRecord" data-id="${esc(r.id)}">Open</button></div>`).join('')}${findings.map(f => `<div class="li"><span class="typeic incident">${ic('warn')}</span><span class="grow"><span class="t">${esc(f.it.q)}</span><span class="s" style="display:block">${esc(f.r.title)} · ${esc(SITES[f.r.site]?.short || '')} · ${esc(fmtWhen(f.r.createdAt))}${f.it.note ? ' · “' + esc(f.it.note) + '”' : ''}</span></span><button class="btn sm" data-act="closeFinding" data-id="${esc(f.r.id)}" data-i="${f.i}" ${state.canWrite ? '' : 'disabled'}>Close out</button></div>`).join('')}</div>` : '<div class="empty">No open findings.</div>'}
       </section>
     </div>
+    ${SUPA && isAdmin() ? appUseHTML() : ''}
     <section class="ocard"><h3>Latest from site</h3>
       ${recs.length ? `<div class="feed">${recs.slice(0, 10).map(r => recordRow(r, { flash: true })).join('')}</div>` : `<div class="empty">${state.mode === 'connecting' ? 'Loading…' : 'Nothing logged yet. Log something on the phone and it appears here straight away.'}</div>`}
     </section>
@@ -2322,7 +2370,7 @@ const H = {
   closeSite: async () => { if (!state._closeArmed) { state._closeArmed = true; renderSheet(); setTimeout(() => { state._closeArmed = false; if (state.sheet && state.sheet.kind === 'site') renderSheet(); }, 4000); return; } state._closeArmed = false; const x = SITE_LIST.find(v => v.id === state.site); try { await rpc('hs_put_site', { tok: state.tok, site: { ...x, active: false } }); x.active = false; buildSites(); state.sheet = null; render(); toast('Site closed'); } catch { toast('Could not close the site.'); } },
   dsAddHaz: el => addOneOff('hazards', el), dsAddCtl: el => addOneOff('controls', el), dsAddPpe: el => addOneOff('ppe', el),
   inAddItem: el => { const v = ($('#' + el.dataset.input).value || '').trim(); if (!v) return; state.draft.items.push({ q: v, a: null, note: '', photos: [] }); renderMain(true); },
-  tab: el => { state.tab = el.dataset.tab === 'office' && !officeOK() ? 'home' : el.dataset.tab; state.sheet = null; renderSheet(); renderNav(); renderMain(); $('#main').scrollTop = 0; },
+  tab: el => { state.tab = el.dataset.tab === 'office' && !officeOK() ? 'home' : el.dataset.tab; state.sheet = null; renderSheet(); renderNav(); renderMain(); $('#main').scrollTop = 0; if (state.tab === 'office') loadAppUse(); },
   menu: () => { state.sheet = { kind: 'menu' }; renderSheet(); refreshPushStatus(); },
   alerts: () => openAlerts(),
   openEvent: el => {
@@ -2452,6 +2500,7 @@ const H = {
   phSafe: el => { state.draft.safe = el.dataset.v; renderMain(true); },
   galleryPhoto: el => { photoTarget = el.dataset.target; $('#galleryFile').click(); },
   actView: el => { state.actView = el.dataset.v; renderMain(); },
+  auView: el => { state.auView = el.dataset.v; renderOffice(); if (state.tab === 'office') renderMain(true); },
   hazClose: el => { state.sheet = { kind: 'hazClose', id: el.dataset.id, d: { photos: [], note: '', err: '' } }; renderSheet(); },
   hcSave: async el => {
     const s = state.sheet; const d = s.d; const r = allRecords().find(x => x.id === s.id); if (!r) return;
