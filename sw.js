@@ -1,7 +1,7 @@
 // H&S on Command service worker. Network first, so updates arrive as soon as there is signal;
 // the last copy of the app is kept on the phone so it still opens with no signal.
 // It also shows the phone notifications the server sends, and opens the app when one is tapped.
-const C = 'hsoc-app-v5';
+const C = 'hsoc-app-v6';
 const SHELL = ['./', 'config.js', 'manifest.webmanifest', 'icon-hs-192.png', 'icon-hs-512.png', 'apple-touch-icon-hs.png', 'favicon-hs.png', 'badge-hs.png'];
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', (e) => e.waitUntil((async () => { for (const k of await caches.keys()) if (k !== C) await caches.delete(k); await self.clients.claim(); })()));
@@ -27,7 +27,7 @@ self.addEventListener('push', (e) => {
     wins.forEach((w) => w.postMessage({ hs: 'push', kind: d.kind || '' }));
     await self.registration.showNotification(d.title || 'H&S on Command', {
       body: d.body || '', tag: d.tag || undefined, icon: 'icon-hs-192.png', badge: 'badge-hs.png',
-      data: { kind: d.kind || '' }, requireInteraction: d.kind === 'incident',
+      data: { kind: d.kind || '' }, requireInteraction: d.kind === 'incident' || d.kind === 'hazard',
     });
   })());
 });
