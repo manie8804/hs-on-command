@@ -106,6 +106,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .newdot { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--bad); color: #fff; font-size: .72rem; font-weight: 700; display: inline-grid; place-items: center; flex: none; box-sizing: border-box; }
 .divh .chev { display: grid; color: var(--muted); flex: none; } .divh .chev .ic { transition: transform .15s; } .divh[aria-expanded="true"] .chev .ic { transform: rotate(180deg); }
 .divsites .li { padding-left: 30px; background: var(--surface-2); }
+.divbar { width: 6px; align-self: stretch; min-height: 38px; border-radius: 3px; flex: none; background: var(--line); }
+.divsites .divbar { width: 4px; min-height: 30px; opacity: .85; }
 .li.lvl[disabled] { opacity: .5; cursor: not-allowed; }
 .dsstep { margin: 14px 0 0; } .dsstep h3 { display: flex; align-items: center; gap: 8px; }
 .stepno { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--surface); font-size: .78rem; font-weight: 700; flex: none; }
@@ -1151,7 +1153,7 @@ function viewHome() {
     <div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${greet}, ${esc(ME.name.split(' ')[0])}</h1></div>
     ${pushPrompt()}
     ${divisionsHTML()}
-    <section class="sitecard">
+    <section class="sitecard"${divColour(curSite().division) ? ` style="border-top:5px solid ${divColour(curSite().division)}"` : ''}>
       <div class="row" style="align-items:flex-start">
         <div class="grow"><p class="eyebrow">${SUPA ? 'Your site today' : 'Your team today'}</p><h2>${esc(site.name)}</h2><p class="sub">${esc(site.kind)} · ${crew.length} ${SUPA ? 'signed in today' : 'people'}${SUPA && site.id && !siteNotifyOn(site.id) ? ' · notifications off' : ''}</p></div>
         <button class="btn sm switch" data-act="switchSite">Switch</button>
@@ -1757,6 +1759,10 @@ function pushPrompt() {
   if (!SUPA || !['off', 'ios'].includes(state.push) || store.get('hsoc-push-nag', '') === ME.id) return '';
   return `<section class="card row" style="gap:12px;align-items:flex-start"><span class="av">${ic('bell')}</span><div class="grow stack" style="gap:8px"><div><b>Turn on notifications</b><p class="muted small" style="margin-top:2px">${isAdmin() ? 'Get a message on this phone for everything that happens on every site.' : 'Get a message on this phone when something happens on your sites.'}</p></div><div class="rowbtns"><button class="btn sm dark" data-act="pushSheet">Turn on</button><button class="btn sm ghost" data-act="pushLater">Not now</button></div></div></section>`;
 }
+// division colours from the Harambe brand guideline (Volume 01, 2024: the pillars' secondary palette); company-wide things stay black and white
+const DIV_COLOURS = [[/broadcast/i, '#6c4796'], [/telecom/i, '#f2e500'], [/security|\biss\b/i, '#ec6608'], [/multimedia/i, '#75b843'], [/aviation/i, '#d9328a']];
+const divColour = name => { const m = DIV_COLOURS.find(([re]) => re.test(name || '')); return m ? m[1] : ''; };
+const divBar = name => { const c = divColour(name); return `<span class="divbar"${c ? ` style="background:${c}"` : ''}></span>`; };
 function divisionsHTML() {
   if (!SUPA) return '';
   const all = Object.values(SITES);
@@ -1767,7 +1773,7 @@ function divisionsHTML() {
   const open = store.get('hsoc-div-open', []) || [];
   return `<section><div class="sec-h"><h3>Divisions</h3><span class="muted small">${isAdmin() ? 'Every site' : 'Your sites'}</span></div><div class="list">${show.map(g => {
     const n = g.sites.reduce((t, x) => t + siteNew(x.id), 0); const isOpen = open.includes(g.name);
-    return `<button class="li divh" data-act="divToggle" data-v="${esc(g.name)}" aria-expanded="${isOpen}"><span class="grow"><span class="t">${esc(g.name)}</span><span class="s" style="display:block">${g.sites.length} site${g.sites.length === 1 ? '' : 's'}${n ? ' · new activity' : ''}</span></span>${n ? `<span class="newdot" aria-label="${n} new">${n > 9 ? '9+' : n}</span>` : ''}<span class="chev">${ic('chev')}</span></button>${isOpen ? `<div class="divsites">${g.sites.length ? g.sites.map(x => { const k = siteNew(x.id); return `<button class="li" data-act="divSite" data-id="${esc(x.id)}"><span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)}${isAdmin() ? '' : ' · ' + esc(LEVEL_NAME[siteRoleOf(x.id)] || 'Team member')}</span></span>${k ? `<span class="newdot" aria-label="${k} new">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Open</span>' : ''}</button>`; }).join('') : `<div class="li"><span class="grow muted small">No sites yet</span>${canAddPeople() && !g.none ? `<button class="btn sm" data-act="newSiteIn" data-v="${esc(g.name)}">Create one</button>` : ''}</div>`}</div>` : ''}`;
+    return `<button class="li divh" data-act="divToggle" data-v="${esc(g.name)}" aria-expanded="${isOpen}">${divBar(g.none ? '' : g.name)}<span class="grow"><span class="t">${esc(g.name)}</span><span class="s" style="display:block">${g.sites.length} site${g.sites.length === 1 ? '' : 's'}${n ? ' · new activity' : ''}</span></span>${n ? `<span class="newdot" aria-label="${n} new">${n > 9 ? '9+' : n}</span>` : ''}<span class="chev">${ic('chev')}</span></button>${isOpen ? `<div class="divsites">${g.sites.length ? g.sites.map(x => { const k = siteNew(x.id); return `<button class="li" data-act="divSite" data-id="${esc(x.id)}">${divBar(g.none ? '' : g.name)}<span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)}${isAdmin() ? '' : ' · ' + esc(LEVEL_NAME[siteRoleOf(x.id)] || 'Team member')}</span></span>${k ? `<span class="newdot" aria-label="${k} new">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Open</span>' : ''}</button>`; }).join('') : `<div class="li"><span class="grow muted small">No sites yet</span>${canAddPeople() && !g.none ? `<button class="btn sm" data-act="newSiteIn" data-v="${esc(g.name)}">Create one</button>` : ''}</div>`}</div>` : ''}`;
   }).join('')}</div></section>`;
 }
 const todoHTML = x => `<button class="todo ${x.done ? 'done' : ''}" data-act="${x.act || 'startFlow'}" ${x.id ? `data-id="${esc(x.id)}"` : `data-flow="${x.flow}"`} ${x.tpl ? `data-tpl="${x.tpl}"` : ''}><span class="box">${ic('check')}</span><span class="grow"><span class="t" style="font-weight:600">${esc(x.label)}</span><span class="s muted small" style="display:block">${x.done ? (x.doneLabel || 'Done today') : esc(x.sub)}</span></span>${x.done ? '' : '<span class="chip">Start</span>'}</button>`;
