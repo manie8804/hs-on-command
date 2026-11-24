@@ -1,7 +1,7 @@
 // H&S on Command service worker. Network first, so updates arrive as soon as there is signal;
 // the last copy of the app is kept on the phone so it still opens with no signal.
 // It also shows the phone notifications the server sends, and opens the app when one is tapped.
-const C = 'hsoc-test-v10';   // the TEST copy is built with 'hsoc-test-v…'
+const C = 'hsoc-test-v11';   // the TEST copy is built with 'hsoc-test-v…'
 const FAMILY = C.replace(/\d+$/, '');
 const SHELL = ['./', 'config.js', 'manifest.webmanifest', 'icon-hs-192.png', 'icon-hs-512.png', 'apple-touch-icon-hs.png', 'favicon-hs.png', 'badge-hs.png'];
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL)).catch(() => {})); });

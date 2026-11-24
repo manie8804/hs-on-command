@@ -89,6 +89,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .testbar { flex: none; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 6px 12px; font-size: .74rem; color: #111; flex-wrap: wrap;
   background: repeating-linear-gradient(-45deg, #f6d32d 0 14px, #f1c40f 14px 28px); text-align: center; }
 .testbar b { letter-spacing: .12em; }
+.cologo { background: #fff; border-radius: var(--r-sm); padding: 12px; display: flex; justify-content: center; align-items: center; min-height: 90px; }
+.cologo img { max-height: 90px; max-width: 100%; }
 .testhint { margin: 0; padding: 8px 12px; border-radius: var(--r-sm); background: #f6d32d; color: #111; font-size: .85rem; text-align: center; }
 .top-row { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; }
 .brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
@@ -355,7 +357,7 @@ canvas.pad { width: 100%; height: 190px; background: #fff; border-radius: 12px; 
       </div>
       <div class="tape"></div>
     </header>
-    <div class="demo gut" id="demoBar"><span>Staff and certificates as on the H&amp;S on Command platform, <span id="asOf"></span>.</span><button class="x" data-act="hideDemo" aria-label="Hide this note">Hide</button></div>
+    <div class="demo gut" id="demoBar"><span><span id="demoLead">Staff and certificates as on the H&amp;S on Command platform,</span> <span id="asOf"></span>.</span><button class="x" data-act="hideDemo" aria-label="Hide this note">Hide</button></div>
     <div class="viewonly gut" id="viewOnly" hidden>View only. You can look around, but logging is switched off for your access level.</div>
     <main id="main"></main>
     <nav class="nav gut" id="nav">
@@ -438,7 +440,34 @@ let DATA = null;
 const LOGO = "data:image/png;base64,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";
 const SUPA = window.HS_CONFIG || null;
 if (TEST) { const tb = document.getElementById('testBar'); if (tb) tb.hidden = false; document.title = 'TEST · H&S on Command'; }
-const COMPANY = { name: 'Harambe Technologies (Pty) Ltd', short: 'Harambe Technologies' };
+const DEF_COMPANY = { name: 'Harambe Technologies (Pty) Ltd', short: 'Harambe Technologies' };
+const COMPANY = { ...DEF_COMPANY };
+// a company without its own logo shows its initials (only Harambe falls back to the Harambe logo)
+const initialsLogo = n => { const w = String(n || 'H&S').replace(/\(.*?\)|pty|ltd|cc|inc/gi, '').trim().split(/\s+/).filter(Boolean); const t = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || 'HS').slice(0, 2)).toUpperCase();
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120"><rect width="240" height="120" rx="14" fill="#111"/><text x="120" y="78" font-family="Arial,Helvetica,sans-serif" font-size="56" font-weight="700" fill="#fff" text-anchor="middle">${t.replace(/[<&>]/g, '')}</text></svg>`); };
+const logoSrc = () => COMPANY.logo || (/harambe/i.test(COMPANY.name || '') ? LOGO : initialsLogo(COMPANY.short || COMPANY.name));
+// document numbers in the library (HAR-OHS-17-03 …) carry the company's own prefix
+let docPfx = 'HAR';
+function applyDocPrefix(p) {
+  p = /^[A-Z0-9]{2,6}$/.test(p || '') ? p : 'HAR'; if (p === docPfx) return;
+  const re = new RegExp('\\b' + docPfx + '-OHS-', 'g'), to = p + '-OHS-';
+  const walk = o => { if (Array.isArray(o)) o.forEach((v, i) => { if (typeof v === 'string') o[i] = v.replace(re, to); else if (v && typeof v === 'object') walk(v); });
+    else if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (typeof v === 'string') o[k] = v.replace(re, to); else if (v && typeof v === 'object') walk(v); } };
+  walk(SWP_DATA); walk(PERMITS); if (STATIC && STATIC.letters) walk(STATIC.letters); docPfx = p;
+}
+const docRef = t => String(t).replace(/\bHAR-OHS-/g, docPfx + '-OHS-');
+const flatDivs = () => COMPANY.divisionsOn === false;
+const ONE_DIV = 'All sites';
+const divWord = (pl, cap) => { const L = COMPANY.labels || {}; const w = pl ? (L.divisions || (L.division ? L.division + 's' : 'divisions')) : (L.division || 'division'); return cap ? w.charAt(0).toUpperCase() + w.slice(1) : w.toLowerCase(); };
+function applyCompany(co) {
+  if (!co || !co.name) return;
+  for (const k of Object.keys(COMPANY)) delete COMPANY[k];
+  Object.assign(COMPANY, DEF_COMPANY, { short: co.name }, co);
+  const cn = document.getElementById('coName'); if (cn) cn.textContent = COMPANY.short || COMPANY.name;
+  const lg = document.getElementById('logo'); if (lg) { lg.src = logoSrc(); lg.alt = COMPANY.short || COMPANY.name; }
+  const dl = document.getElementById('demoLead'); if (dl) dl.textContent = /harambe/i.test(COMPANY.name || '') ? 'Staff and certificates as on the H&S on Command platform,' : 'Staff list and certificates as of';
+  applyDocPrefix(COMPANY.docPrefix);
+}
 const DUE = 60;
 const ME = { name: SUPA ? '' : 'Manie van Loggerenberg', role: SUPA ? '' : 'Safety Manager', id: null };
 function setMe(id) { const w = WORKER[id]; if (!w) return false; ME.id = id; ME.name = w.name; ME.role = w.role; return true; }
@@ -505,7 +534,7 @@ function siteNew(sid) { const seen = store.get(siteSeenKey(), {}) || {}; const f
 function markSiteSeen(sid) { const top = EVENTS.filter(e => e.site === sid).reduce((m, e) => Math.max(m, e.id), 0); if (!top) return; const seen = store.get(siteSeenKey(), {}) || {}; if ((seen[sid] || 0) >= top) return; seen[sid] = top; store.set(siteSeenKey(), seen); }
 const who = () => ({ tok: state.tok || null, me: ME.id || store.get('hsoc-me', '') || null });
 /* ---------- who has the app and uses it (Office › App use, the Safety Manager only) ---------- */
-const APP_V = '2026-11-18';
+const APP_V = '2026-11-24';
 let seenBusy = false;
 function seenPing() {
   if (!SUPA || !supaCk || seenBusy || !ME || !ME.id || isOffline()) return;
@@ -588,8 +617,8 @@ function applyBoot(b) {
   SITE_LIST = Array.isArray(b.sites) ? b.sites : [];
   MEMBERS = Array.isArray(b.members) ? b.members : []; PERMS = Array.isArray(b.perms) ? b.perms : [];
   LISTS = b.lists || {}; HIDDEN = new Set(LISTS.hidden || []);
-  if (b.static && b.static.letters) STATIC = b.static;
-  if (b.static && b.static.company && b.static.company.name) { Object.assign(COMPANY, b.static.company); const cn = document.getElementById('coName'); if (cn) cn.textContent = COMPANY.short || COMPANY.name; }
+  if (b.static && b.static.letters) { STATIC = b.static; const p = docPfx; docPfx = 'HAR'; applyDocPrefix(p); }
+  if (b.static && b.static.company && b.static.company.name) applyCompany(b.static.company);
   applyFeed(b, true);
   initData(b.register);
   return true;
@@ -608,7 +637,7 @@ let TPL = Object.fromEntries(TEMPLATES.map(t => [t.id, t]));
 function applyLists(L) {
   LISTS = L || {};
   const arr = (v, d) => Array.isArray(v) && v.length ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()) : d;
-  DIVISIONS = arr(LISTS.divisions, DEF_DIVISIONS);
+  DIVISIONS = flatDivs() ? [ONE_DIV] : arr(LISTS.divisions, COMPANY.pack && COMPANY.pack !== 'harambe' ? [ONE_DIV] : DEF_DIVISIONS);
   HAZARDS = arr(LISTS.hazards, DEF_HAZARDS); CONTROLS = arr(LISTS.controls, DEF_CONTROLS); PPE = arr(LISTS.ppe, DEF_PPE); TOPICS = arr(LISTS.topics, DEF_TOPICS);
   { // library checklists (edited copies saved by the Lists page win), then the company's own
     const saved = Array.isArray(LISTS.templates) ? LISTS.templates.filter(t => t && t.id && t.name && Array.isArray(t.items) && t.items.length) : [];
@@ -705,11 +734,24 @@ function photoTodos(site) {
   out.push({ k: 'ph-p', label: 'Photos of the work: before, during, after', sub: line + ' · for the as-built record', done: b && (du || af), flow: 'photo', tpl: 'progress', doneLabel: line });
   return out;
 }
-const siteActs = () => (SWP_DATA.div[curSite().division] || []).filter(k => SWP[k]);
+// industry packs: which safe work procedures (and so which checklists) a company starts with
+const PACKS = [
+  { id: 'harambe', name: 'Security, aviation, broadcasting, telecoms and multimedia', divs: true },
+  { id: 'fibre', name: 'Fibre optic and telecoms networks', acts: ['fibre-splicing', 'trenching', 'cable-pits', 'civils-concrete', 'street-poles', 'pylon-pole', 'tower-climbing', 'wah-ladders', 'mewp', 'lifting-rigging', 'lv-electrical', 'ceilings-cabling', 'equipment-room', 'deployed-site', 'fleet-driving', 'hand-tools', 'lone-callout'] },
+  { id: 'electrical', name: 'Electrical contracting', acts: ['lv-electrical', 'electrical-testing', 'substation', 'trenching', 'cable-pits', 'pylon-pole', 'street-poles', 'ceilings-cabling', 'wah-ladders', 'mewp', 'equipment-room', 'server-room', 'deployed-site', 'fleet-driving', 'hand-tools', 'lone-callout'] },
+  { id: 'construction', name: 'Construction and civils', acts: ['civils-concrete', 'trenching', 'wah-ladders', 'mewp', 'lifting-rigging', 'lv-electrical', 'ceilings-cabling', 'stacking-handling', 'forklift-pallet', 'deployed-site', 'fleet-driving', 'hand-tools'] },
+  { id: 'mechanical', name: 'Mechanical, maintenance and workshops', acts: ['hand-tools', 'electrical-testing', 'lv-electrical', 'lifting-rigging', 'forklift-pallet', 'stacking-handling', 'wah-ladders', 'mewp', 'client-mine', 'cleaning-chem', 'deployed-site', 'fleet-driving', 'lone-callout'] },
+  { id: 'general', name: 'Office, warehouse and general', acts: ['office-dse', 'stacking-handling', 'forklift-pallet', 'fleet-driving', 'cleaning-chem', 'reception-visitors', 'server-room', 'hand-tools', 'lpg-braai'] },
+];
+const PACK = Object.fromEntries(PACKS.map(p => [p.id, p]));
+const packActs = () => { const p = PACK[COMPANY.pack]; return p && p.acts ? p.acts : Object.keys(SWP); };
+// a division's safe work procedures: the Lists page's choice, else Harambe's division set, else the company's pack
+const actsFor = div => (LISTS.divActs && Array.isArray(LISTS.divActs[div]) ? LISTS.divActs[div] : (!PACK[COMPANY.pack] || COMPANY.pack === 'harambe') && SWP_DATA.div[div] ? SWP_DATA.div[div] : packActs());
+const siteActs = () => actsFor(curSite().division).filter(k => SWP[k]);
 function tplDivs(t) {
   if (Array.isArray(t.divs)) return t.divs;
   if (t.all || t.custom) return DIVISIONS.slice();
-  return DIVISIONS.filter(d => (SWP_DATA.div[d] || []).some(a => (SWP_DATA.actTpl[a] || []).includes(t.id)));
+  return DIVISIONS.filter(d => actsFor(d).some(a => (SWP_DATA.actTpl[a] || []).includes(t.id)));
 }
 const tplFor = div => TEMPLATES.filter(t => !div || tplDivs(t).includes(div));
 function dailyKeys(div) {
@@ -775,14 +817,24 @@ function allRecords() {
 
 /* ================= persistence ================= */
 let supaCk = '', pollT = null, recSig = '';
+let sect = store.get('hsoc-sect', '') || (TEST && TEST.schema) || '';   // the company's own section of the database (Harambe: public)
 async function rpc(fn, args) {
   const h = { apikey: SUPA.supabaseKey, 'Content-Type': 'application/json' };
   if (/^eyJ/.test(SUPA.supabaseKey)) h.Authorization = 'Bearer ' + SUPA.supabaseKey;
-  if (TEST && TEST.schema) h['Content-Profile'] = TEST.schema;   // the TEST copy's own section of the database
+  if (sect && sect !== 'public') h['Content-Profile'] = sect;   // the company's own section of the database
   const r = await fetch(SUPA.supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(Object.assign({ ck: supaCk }, args || {})) });
   if (!r.ok) { const e = new Error('rpc ' + fn + ' ' + r.status); e.status = r.status; throw e; }
   const t = await r.text(); return t ? JSON.parse(t) : null;
 }
+// the company directory: which company space does this code open? undefined = directory not reachable (old set-up)
+async function dirFind(code) {
+  const h = { apikey: SUPA.supabaseKey, 'Content-Type': 'application/json', 'Content-Profile': 'hsdir' };
+  if (/^eyJ/.test(SUPA.supabaseKey)) h.Authorization = 'Bearer ' + SUPA.supabaseKey;
+  let r; try { r = await fetch(SUPA.supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/hs_find', { method: 'POST', headers: h, body: JSON.stringify({ code, test: !!TEST }) }); } catch { return { error: 'net' }; }
+  if (!r.ok) return undefined;
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const OFF_MSG = 'H&S on Command is switched off for your company at the moment. Your Safety Manager can tell you more.';
 function afterData() {
   state.needCode = false; state.codeErr = ''; noteKnownRequests();
   if (!ME.id && !setMe(store.get('hsoc-me', ''))) state.needSignIn = true;
@@ -793,21 +845,33 @@ function maybeOpenAlerts() { if (state._openAlerts && ME.id && !state.needSignIn
 async function initSupa() {
   state.mode = 'supa'; renderPill();
   supaCk = store.get('hsoc-ck', '');
-  if (!supaCk && TEST && TEST.code) { submitCode(TEST.code); return; }   // the TEST copy fills in its own company code
+  if (!supaCk && TEST && TEST.code && !store.get('hsoc-manual-code', false)) { submitCode(TEST.code); return; }   // the TEST copy fills in its own company code
   if (!supaCk) { state.needCode = true; render(); return; }
   const cached = store.get('hsoc-boot', null);
   if (cached && applyBoot(cached)) afterData();
   try {
     const b = await rpc('hs_boot', who());
-    if (!b) { codeRejected('This phone’s company code is no longer accepted. Enter the new code.'); return; }
+    if (!b) { await codeGone(); return; }
     store.set('hsoc-boot', b); applyBoot(b); if (!cached) afterData(); else onData();
   } catch { if (!cached) { state.needCode = true; state.codeErr = 'Could not reach the server. Check your signal and try again.'; render(); } }
 }
-function codeRejected(msg) { supaCk = ''; store.set('hsoc-ck', ''); store.set('hsoc-boot', null); setTok('', 'worker'); state.needCode = true; state.codeErr = msg; render(); }
+// the code stopped working: switched off by the owner (keep the code, say so), or changed by the Safety Manager
+async function codeGone() {
+  const ck = supaCk; if (!ck || state._codeGone) return; state._codeGone = true;
+  let f; try { f = await dirFind(ck); } catch {} state._codeGone = false;
+  if (f && f.active === false) { codeRejected(OFF_MSG); state.codeKeep = ck; render(); return; }
+  codeRejected('This phone’s company code is no longer accepted. Enter the new code.');
+}
+function codeRejected(msg) { supaCk = ''; store.set('hsoc-ck', ''); state.codeKeep = ''; store.set('hsoc-boot', null); setTok('', 'worker'); state.needCode = true; state.codeErr = msg; render(); }
 async function submitCode(code) {
   const ck = code.trim().toUpperCase(); if (!ck) return;
   const btn = $('#codeForm button'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
-  supaCk = ck;
+  const f = await dirFind(ck);
+  if (f === null) { state.codeErr = 'That code is not right. Check it and try again.'; render(); return; }
+  if (f && f.error) { state.codeErr = f.error === 'busy' ? 'Too many tries. Wait a minute and try again.' : 'Could not reach the server. Check your signal and try again.'; render(); return; }
+  if (f && f.active === false) { state.codeErr = OFF_MSG; render(); return; }
+  if (f && f.sect) { sect = f.sect; store.set('hsoc-sect', sect); applyCompany(f.company); }
+  supaCk = ck; store.set('hsoc-manual-code', false);
   try {
     const b = await rpc('hs_boot', { tok: null, me: null });
     if (!b) { supaCk = ''; state.codeErr = 'That code is not right. Check it and try again.'; render(); return; }
@@ -918,7 +982,7 @@ function openAlerts() {
 const PUSH_TXT = { on: 'On for this phone', off: 'Off. Tap to turn on', ios: 'Add the app to your home screen first', blocked: 'Blocked in your phone settings', none: 'Not available in this browser', pin: 'Sign in with your PIN to turn on' };
 const EV_ICON = { hazard: 'alert', hazardok: 'check', team: 'user', incident: 'alert', request: 'warn', decision: 'check', sign: 'pen', signed: 'check', person: 'user', cert: 'clip', site: 'home', dsti: 'clip', toolbox: 'talk', inspection: 'clip', check: 'x', notify: 'bell' };
 async function refreshBoot() {
-  try { const b = await rpc('hs_boot', who()); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles, b.members, b.perms]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
+  try { const b = await rpc('hs_boot', who()); if (b) { const sig = JSON.stringify([b.people, b.sites, b.lists, b.roles, b.members, b.perms, b.static && b.static.company, b.register && b.register.asOf]); if (sig !== state._bootSig) { state._bootSig = sig; store.set('hsoc-boot', b); applyBoot(b); onData(); if (state.sheet && !isFormSheet()) renderSheet(); } } } catch {}
 }
 async function loadAtt() {
   try { const a = await rpc('hs_attendance', { day: todayISO(), ...who() }); if (a && typeof a === 'object') {
@@ -932,7 +996,7 @@ async function pullRecords() {
   loadAtt(); if (++pollN % 4 === 0) refreshBoot();
   try {
     const rows = await rpc('hs_records', { lim: 300, ...who() });
-    if (rows === null) { codeRejected('This phone’s company code is no longer accepted. Enter the new code.'); return; }
+    if (rows === null) { await codeGone(); return; }
     if (!Array.isArray(rows)) return;
     const sig = rows.map(r => r.id + ':' + (r.updatedAt || '') + ':' + (r.openFindings ?? '')).join('|');
     const before = new Set(state.records.map(r => r.id));
@@ -1058,10 +1122,10 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 function render() { seenPing(); if (isAdmin() && !state.appUse) loadAppUse(); $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
 function viewCode() {
   return `<div class="signin gut">
-    <div class="hero"><img src="${LOGO}" alt="${esc(COMPANY.short)}"><h1>H&amp;S on Command</h1><p>Enter your company code. You only do this once on this phone.</p></div>
+    <div class="hero"><img src="${sect && sect !== 'public' && sect !== 'hstest' ? logoSrc() : LOGO}" alt="H&amp;S on Command"><h1>H&amp;S on Command</h1><p>Enter your company code. You only do this once on this phone.</p></div>
     <form id="codeForm" class="stack" style="gap:10px" autocomplete="off">
       <label for="ckInput" class="lab" style="font-weight:700;font-size:.9rem">Company code</label>
-      <input id="ckInput" name="ck" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="HAR-XXXX-XXXX">
+      <input id="ckInput" name="ck" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXX-XXXX-XXXX" value="${esc(state.codeKeep || '')}">
       ${state.codeErr ? `<p class="small" style="color:var(--bad);font-weight:600" role="alert">${esc(state.codeErr)}</p>` : ''}
       <button class="btn dark block" type="submit">Continue</button>
     </form>
@@ -1071,12 +1135,12 @@ function viewCode() {
 function viewPin() {
   const r = roleOf(ME.id);
   return `<div class="signin gut">
-    <div class="hero"><img src="${LOGO}" alt="${esc(COMPANY.short)}"><h1>${esc(ME.name)}</h1><p>You are set up as ${r === 'admin' ? 'the Safety Manager' : 'a supervisor'}. Enter your 4-digit PIN to sign in.</p></div>
+    <div class="hero"><img src="${logoSrc()}" alt="${esc(COMPANY.short)}"><h1>${esc(ME.name)}</h1><p>You are set up as ${r === 'admin' ? 'the Safety Manager' : 'a supervisor'}. Enter your 4-digit PIN to sign in.</p></div>
     <form id="pinForm" class="stack" style="gap:10px" autocomplete="off">
       <label for="pinInput" class="lab" style="font-weight:700;font-size:.9rem">PIN</label>
       <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
       ${state.pinErr ? `<p class="small" style="color:var(--bad);font-weight:600" role="alert">${esc(state.pinErr)}</p>` : ''}
-      ${TEST && TEST.pin ? `<p class="testhint">Test copy: the PIN for everyone is <b>${esc(TEST.pin)}</b></p>` : ''}
+      ${TEST && TEST.pin && sect === TEST.schema ? `<p class="testhint">Test copy: the PIN for everyone is <b>${esc(TEST.pin)}</b></p>` : COMPANY.demoPin ? `<p class="testhint">Demo company: the PIN for everyone is <b>${esc(COMPANY.demoPin)}</b></p>` : ''}
       <button class="btn dark block" type="submit">Sign in</button>
     </form>
     <button class="btn ghost block" data-act="skipPin">Continue without PIN (worker access)</button>
@@ -1097,7 +1161,7 @@ function viewSignIn() {
   const words = q.split(/\s+/).filter(Boolean);
   const list = q.length < 2 ? [] : CREW.filter(w => { const hay = (w.name + ' ' + w.no).toLowerCase(); const parts = hay.split(/\s+/); return words.every(x => parts.some(pt => pt.startsWith(x))); }).slice(0, 6);
   return `<div class="signin gut">
-    <div class="hero"><img src="${LOGO}" alt="${esc(COMPANY.short)}"><h1>H&amp;S on Command</h1><p>Type your name, then tap it when it comes up. This phone remembers you until you change user in the menu.</p></div>
+    <div class="hero"><img src="${logoSrc()}" alt="${esc(COMPANY.short)}"><h1>H&amp;S on Command</h1><p>Type your name, then tap it when it comes up. This phone remembers you until you change user in the menu.</p></div>
     <label for="meSearch" class="lab" style="font-weight:700;font-size:.9rem">Your name</label>
     <input id="meSearch" type="search" autocomplete="off" autocapitalize="words" placeholder="Start typing your name or employee number" value="${esc(state.meQuery || '')}" data-bind="meQuery" aria-label="Search your name">
     ${q.length < 2 ? '' : list.length ? `<div class="list">${list.map(w => `<button class="li" data-act="pickMe" data-id="${w.id}"><span class="av">${esc(initials(w.name))}</span><span class="grow"><span class="t">${esc(w.name)}</span><span class="s" style="display:block">${esc(w.role)} · <span class="mono">${esc(w.no)}</span></span></span></button>`).join('')}</div>` : '<div class="empty">No Harambe staff member matches that name. Check the spelling, or ask the Safety Manager to add you.</div>'}
@@ -1513,7 +1577,7 @@ function viewDsti() {
     <div class="field">${pickChips(CONDITIONS, d.cond, 'dsCond')}</div>
     ${weather ? '<div class="banner">Work at height stops in rain, strong wind or lightning. Wait for it to clear, or rate the risk high.</div>' : ''}
     ${step(7, 'Risk with these controls')}
-    <p class="muted small" style="margin-top:-4px">Likelihood × severity, the company risk method (HAR-OHS-04-01).${o.acts.length ? ' Filled in from the safe work procedure; change it if today is different.' : ''}</p>
+    <p class="muted small" style="margin-top:-4px">Likelihood × severity, the company risk method (${docPfx}-OHS-04-01).${o.acts.length ? ' Filled in from the safe work procedure; change it if today is different.' : ''}</p>
     <div class="field"><span class="lab">How likely is someone to be hurt?</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${d.rl === n ? 'on' : ''}" data-act="dsRisk" data-k="rl" data-v="${n}">${n} ${L_NAMES[n]}</button>`).join('')}</div></div>
     <div class="field"><span class="lab">How bad could it be?</span><div class="seg">${[1, 2, 3, 4, 5].map(n => `<button class="${d.rs === n ? 'on' : ''}" data-act="dsRisk" data-k="rs" data-v="${n}">${n} ${S_NAMES[n]}</button>`).join('')}</div></div>
     ${band ? `<div class="banner ${band.k === 'bad' ? '' : 'info'}"><b>Risk ${r}: ${band.t}.</b> ${band.k === 'bad' ? 'Stop. Work may not start until more controls bring it down.' : band.k === 'warn' ? 'The controls must be in place and checked during the work.' : 'Manage it with the normal procedures.'}</div>` : ''}
@@ -1699,7 +1763,8 @@ function sheetMenu() {
       ${state.mode === 'local' || state.mode === 'supa' ? `<button class="li" data-act="changeUser"><span class="grow"><b>Change user</b><span class="s" style="display:block">Now: ${esc(ME.name)}</span></span></button>` : ''}
       <button class="li" data-act="switchSite"><span class="grow"><b>${SUPA ? 'Switch site' : 'Switch team or project'}</b><span class="s" style="display:block">Now: ${esc(curSite().name)}</span></span></button>
       ${SUPA && roleOf(ME.id) !== 'worker' && !isSup() ? `<button class="li" data-act="pinAgain"><span class="grow"><b>Sign in with your PIN</b><span class="s" style="display:block">For supervisor tools</span></span></button>` : ''}
-      ${isAdmin() ? `<button class="li" data-act="settings"><span class="grow"><b>Settings</b><span class="s" style="display:block">Supervisors and PINs, people added on site, lists, company code</span></span></button>` : ''}
+      ${isAdmin() ? `<button class="li" data-act="settings"><span class="grow"><b>Settings</b><span class="s" style="display:block">Company set-up, supervisors and PINs, people added on site, lists, company code</span></span></button>` : ''}
+      ${SUPA && (TEST || isAdmin()) ? `<button class="li" data-act="changeCompany"><span class="grow"><b>${state._ccArmed ? 'Tap again to leave ' + esc(COMPANY.short || COMPANY.name) : 'Change company'}</b><span class="s" style="display:block">${state._ccArmed ? 'This phone forgets the company code and signs you out' : 'Enter another company’s code'}</span></span></button>` : ''}
     </div>
     <div class="card"><p class="eyebrow">Signed in as</p><p style="margin-top:4px"><b>${esc(ME.name)}</b>${ME.role ? ' · ' + esc(ME.role) : ''}, ${esc(COMPANY.name)}</p>${SUPA ? `<p style="margin-top:4px"><span class="chip ${isSup() ? 'good' : ''}">${state.authRole === 'admin' ? 'Safety Manager access' : state.authRole === 'supervisor' ? 'Supervisor access' : 'Worker access'}</span></p>` : ''}<p class="muted small" style="margin-top:8px">Staff and certificate dates come from the H&amp;S on Command platform as at ${esc(fmtDate(DATA.asOf))}. This is a test version: anything you log here is seen by everyone using the app.</p></div>` };
 }
@@ -1730,9 +1795,9 @@ function sheetTeam(s) {
   const pend = REQUESTS.find(r => r.kind === 'notify' && r.site === sid && r.status === 'pending');
   const order = { manager: 0, supervisor: 1, member: 2 };
   const team = teamOf(sid).filter(m => WORKER[m.pid]).sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || WORKER[a.pid].name.localeCompare(WORKER[b.pid].name));
-  const division = mgr
-    ? `<div class="field"><label for="tmDiv">Division</label><select id="tmDiv" data-sitediv="${esc(sid)}">${site.division ? '' : '<option value="" selected>Choose a division</option>'}${site.division && !DIVISIONS.includes(site.division) ? `<option selected>${esc(site.division)}</option>` : ''}${DIVISIONS.map(d => `<option ${d === site.division ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>`
-    : `<p class="muted small">Division: ${esc(site.division || 'not set yet')}</p>`;
+  const division = flatDivs() ? '' : mgr
+    ? `<div class="field"><label for="tmDiv">${esc(divWord(false, true))}</label><select id="tmDiv" data-sitediv="${esc(sid)}">${site.division ? '' : '<option value="" selected>Choose a division</option>'}${site.division && !DIVISIONS.includes(site.division) ? `<option selected>${esc(site.division)}</option>` : ''}${DIVISIONS.map(d => `<option ${d === site.division ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>`
+    : `<p class="muted small">${esc(divWord(false, true))}: ${esc(site.division || 'not set yet')}</p>`;
   const notif = canSwitchNotify(sid)
     ? `<button class="toggle card" data-act="siteNotify" aria-pressed="${on}"><span class="grow"><b>Notifications for this site</b><span class="s muted small" style="display:block">${on ? 'On. Everyone on the team below gets them.' : 'Off. The team gets none for this site.'} ${isAdmin() ? 'You get them either way.' : esc(an) + ' gets them either way.'}</span></span><span class="sw ${on ? 'on' : ''}" aria-hidden="true"></span></button>`
     : `<div class="card stack" style="gap:8px"><div class="row"><b class="grow">Notifications for this site</b>${on ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</div>
@@ -1755,10 +1820,10 @@ function sheetSite() {
   if (!SUPA) return { title: 'Switch team or project', body: list };
   const row = x => { const r = readiness(x.id); const k = siteNew(x.id); return `<button class="li" data-act="setSite" data-id="${x.id}"><span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)} · ${r.good + r.warn + r.bad} signed in today</span></span>${k ? `<span class="newdot">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Current</span>' : ''}</button>`; };
   const grouped = [...DIVISIONS, ''].map(d => ({ d, l: Object.values(SITES).filter(x => d ? x.division === d : !DIVISIONS.includes(x.division)) })).filter(g => g.l.length)
-    .map(g => `<p class="eyebrow" style="margin:4px 2px -4px">${esc(g.d || 'No division yet')}</p><div class="list">${g.l.map(row).join('')}</div>`).join('');
+    .map(g => `${flatDivs() ? '' : `<p class="eyebrow" style="margin:4px 2px -4px">${esc(g.d || 'No ' + divWord() + ' yet')}</p>`}<div class="list">${g.l.map(row).join('')}</div>`).join('');
   const projects = (DATA.projects || []).map(p => p.n);
   const newSite = canAddPeople() ? `<section class="card stack" style="gap:10px"><h3>Create a site</h3>
-      <div class="field"><label for="nsDiv">Division</label><select id="nsDiv"><option value="">Choose a division</option>${DIVISIONS.map(d => `<option ${d === state.newDiv ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>
+      ${flatDivs() ? '' : `<div class="field"><label for="nsDiv">${esc(divWord(false, true))}</label><select id="nsDiv"><option value="">Choose a ${esc(divWord())}</option>${DIVISIONS.map(d => `<option ${d === state.newDiv ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>`}
       <div class="field"><label for="nsName">Site name</label><input id="nsName" placeholder="For example: Parliament – Cape Town"></div>
       <div class="field"><label for="nsProject">Project (optional)</label><select id="nsProject"><option value="">No project</option>${projects.map(n => `<option>${esc(n)}</option>`).join('')}</select></div>
       <div class="field"><label for="nsArea">Area or address (optional)</label><input id="nsArea" placeholder="For example: 90 Plein Street, Cape Town"></div>
@@ -1778,11 +1843,13 @@ function divisionsHTML() {
   if (!SUPA) return '';
   const all = Object.values(SITES);
   const groups = DIVISIONS.map(d => ({ name: d, sites: all.filter(x => x.division === d) }));
-  const other = all.filter(x => !DIVISIONS.includes(x.division)); if (other.length) groups.push({ name: 'No division yet', sites: other, none: true });
+  const other = all.filter(x => !DIVISIONS.includes(x.division)); if (other.length) groups.push({ name: 'No ' + divWord() + ' yet', sites: other, none: true });
   const show = groups.filter(g => g.sites.length || (isAdmin() && !g.none));
   if (!show.length) return '';
+  if (flatDivs()) return `<section><div class="sec-h"><h3>Sites</h3><span class="muted small">${isAdmin() ? 'Every site' : 'Your sites'}</span></div><div class="list">${all.sort((a, b) => a.name.localeCompare(b.name)).map(x => { const k = siteNew(x.id);
+    return `<button class="li" data-act="setSite" data-id="${esc(x.id)}"><span class="grow"><span class="t">${esc(x.name)}</span>${x.area ? `<span class="s" style="display:block">${esc(x.area)}</span>` : ''}</span>${k ? `<span class="newdot">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Today</span>' : ''}</button>`; }).join('')}</div></section>`;
   const open = store.get('hsoc-div-open', []) || [];
-  return `<section><div class="sec-h"><h3>Divisions</h3><span class="muted small">${isAdmin() ? 'Every site' : 'Your sites'}</span></div><div class="list">${show.map(g => {
+  return `<section><div class="sec-h"><h3>${esc(divWord(true, true))}</h3><span class="muted small">${isAdmin() ? 'Every site' : 'Your sites'}</span></div><div class="list">${show.map(g => {
     const n = g.sites.reduce((t, x) => t + siteNew(x.id), 0); const isOpen = open.includes(g.name);
     return `<button class="li divh" data-act="divToggle" data-v="${esc(g.name)}" aria-expanded="${isOpen}">${divBar(g.none ? '' : g.name)}<span class="grow"><span class="t">${esc(g.name)}</span><span class="s" style="display:block">${g.sites.length} site${g.sites.length === 1 ? '' : 's'}${n ? ' · new activity' : ''}</span></span>${n ? `<span class="newdot" aria-label="${n} new">${n > 9 ? '9+' : n}</span>` : ''}<span class="chev">${ic('chev')}</span></button>${isOpen ? `<div class="divsites">${g.sites.length ? g.sites.map(x => { const k = siteNew(x.id); return `<button class="li" data-act="divSite" data-id="${esc(x.id)}">${divBar(g.none ? '' : g.name)}<span class="grow"><span class="t">${esc(x.name)}</span><span class="s" style="display:block">${esc(x.kind)}${isAdmin() ? '' : ' · ' + esc(LEVEL_NAME[siteRoleOf(x.id)] || 'Team member')}</span></span>${k ? `<span class="newdot" aria-label="${k} new">${k > 9 ? '9+' : k}</span>` : ''}${x.id === state.site ? '<span class="chip good">Open</span>' : ''}</button>`; }).join('') : `<div class="li"><span class="grow muted small">No sites yet</span>${canAddPeople() && !g.none ? `<button class="btn sm" data-act="newSiteIn" data-v="${esc(g.name)}">Create one</button>` : ''}</div>`}</div>` : ''}`;
   }).join('')}</div></section>`;
@@ -2198,6 +2265,70 @@ function sheetAppt(s) {
   return { title: a.title || 'Appointment', body: `${letterHTML(a)}
     ${a.status === 'to sign' ? (canSign ? `<div class="field"><span class="lab">${esc(WORKER[a.person]?.name || 'Appointee')}: sign to accept</span>${sigHTML(s.sig, 'apptSign', 'Tap for the appointee to sign')}</div><button class="btn hivis block" data-act="acceptAppt" ${s.sig ? '' : 'disabled'}>Accept appointment</button>` : '<div class="banner">Waiting for the appointee to sign.</div>') : '<div class="banner info">Signed. The Safety Manager can see it.</div>'}` };
 }
+function sheetCompany(s, back) {
+  const c = s.co || (s.co = { name: COMPANY.name || '', short: COMPANY.short || '', reg: COMPANY.reg || '', address: COMPANY.address || '', phone: COMPANY.phone || '', email: COMPANY.email || '',
+    docPrefix: COMPANY.docPrefix || docPfx, divisionsOn: !flatDivs(), division: (COMPANY.labels || {}).division || '', pack: COMPANY.pack || (/harambe/i.test(COMPANY.name || '') ? 'harambe' : ''), logo: COMPANY.logo || null });
+  const f = (k, label, ph, extra = '') => `<div class="field"><label for="co-${k}">${label}</label><input id="co-${k}" data-cobind="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}" ${extra}></div>`;
+  const st = s.staff;
+  return { title: 'Company set-up', body: back + `<p class="muted small">How ${esc(COMPANY.short || COMPANY.name)} shows in the app, on appointment letters and on every record. Only you can change this.</p>
+    <section class="card stack" style="gap:10px"><h3>Logo</h3>
+      <div class="cologo"><img src="${c.logo || logoSrc()}" alt="Company logo"></div>
+      <div class="rowbtns"><button class="btn grow" data-act="coLogo">${ic('camera')}${c.logo ? 'Change logo' : 'Add logo'}</button>${c.logo ? '<button class="btn ghost grow" data-act="coLogoOff">Remove</button>' : ''}</div>
+      <input id="coLogoFile" type="file" accept="image/*" hidden></section>
+    <section class="card stack" style="gap:10px"><h3>Details</h3>
+      ${f('name', 'Registered name', 'For example: ABC Fibre (Pty) Ltd')}${f('short', 'Short name (top of the app)', 'For example: ABC Fibre')}
+      ${f('reg', 'Registration number (optional)', '2015/123456/07')}${f('address', 'Address (optional)', 'Street, town')}
+      ${f('phone', 'Phone (optional)', '011 123 4567', 'inputmode="tel"')}${f('email', 'Email (optional)', 'safety@company.co.za', 'inputmode="email"')}
+      ${f('docPrefix', 'Document prefix', 'ABC', 'autocapitalize="characters" maxlength="6"')}
+      <p class="muted small">Procedures, permits and registers show as ${esc((c.docPrefix || 'ABC').toUpperCase())}-OHS-17-03 and so on.</p></section>
+    <section class="card stack" style="gap:10px"><h3>Type of work</h3>
+      <div class="field"><label for="co-pack">Industry pack</label><select id="co-pack" data-cobind="pack"><option value="">All work types</option>${PACKS.map(p => `<option value="${p.id}" ${c.pack === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <p class="muted small">Sets the safe work procedures offered on the DSTI, the inspection checklists and the toolbox talks. You can still switch single checklists on or off under Lists.</p>
+      <button class="toggle" data-act="coDivs"><span class="grow"><b>Group sites under ${esc(divWord(true))}</b><span class="s muted small" style="display:block">${c.divisionsOn ? 'On. Sites are grouped, each with its own daily checklist.' : 'Off. One list of sites for the whole company.'}</span></span><span class="sw ${c.divisionsOn ? 'on' : ''}" aria-hidden="true"></span></button>
+      ${c.divisionsOn ? `${f('division', 'What you call them (optional)', 'Division, department, region, branch …')}<p class="muted small">Set the names themselves under Lists.</p>` : ''}</section>
+    ${errLine(s)}<button class="btn hivis block" data-act="coSave">Save company set-up</button>
+    <section class="card stack" style="gap:10px"><h3>Staff list</h3>
+      <p class="muted small">${((DATA && DATA.staff) || []).length} staff in the app${DATA && DATA.asOf ? ', as of ' + esc(fmtDate(DATA.asOf)) : ''}. Paste rows from Excel or a CSV file: name, employee number, job title, department. A first row with headings is fine.</p>
+      <textarea id="staffPaste" class="lstext" placeholder="Name, Employee no, Job title, Department" data-stbind="text">${esc((st && st.text) || '')}</textarea>
+      <div class="rowbtns"><button class="btn grow" data-act="staffFile">Choose a CSV file</button><button class="btn grow" data-act="staffCheck">Check the list</button></div>
+      <input id="staffFile" type="file" accept=".csv,text/csv,text/plain" hidden>
+      ${st && st.rows ? `<div class="banner info">${st.rows.length} rows read · ${st.add} new · ${st.upd} already in the app${st.gone.length ? ` · ${st.gone.length} in the app but not in this list` : ''}${st.bad ? ` · ${st.bad} rows skipped (no name)` : ''}</div>
+        ${st.gone.length ? `<label class="chk"><input type="checkbox" data-act="staffRemove" ${st.remove ? 'checked' : ''}><span>Remove the ${st.gone.length} staff not in this list (people who left). Their records stay.</span></label>` : ''}
+        <button class="btn dark block" data-act="staffSave">Update the staff list</button>` : ''}
+    </section>` };
+}
+function parseStaff(text) {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const split = l => { const sep = l.includes('\t') ? '\t' : l.split(';').length > l.split(',').length ? ';' : ','; const out = []; let cur = '', q = false;
+    for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
+  let rows = lines.map(split); let map = { n: 0, no: 1, r: 2, d: 3 };
+  if (rows.length && rows[0].some(c => /name|naam|employee|surname|job|title|department|dept|no\.?$/i.test(c)) && !rows[0].some(c => /\d{3,}/.test(c))) {
+    const h = rows.shift().map(c => c.toLowerCase()); const find = re => h.findIndex(c => re.test(c));
+    const first = find(/^(first|name|naam)/), last = find(/surname|last name|van/);
+    map = { n: first > -1 ? first : 0, last, no: find(/no|number|nr|code|id/), r: find(/job|title|position|occupation|pos/), d: find(/dep|section|division|team/) };
+  }
+  let bad = 0; const out = [];
+  rows.forEach(c => { let n = (c[map.n] || '').trim(); if (map.last > -1 && c[map.last]) n = (n + ' ' + c[map.last]).trim(); if (n.length < 2) { bad++; return; }
+    out.push({ n: n.slice(0, 80), no: map.no > -1 ? (c[map.no] || '').slice(0, 20) : '', r: map.r > -1 ? (c[map.r] || '').slice(0, 80) : '', d: map.d > -1 ? (c[map.d] || '').slice(0, 60) : '' }); });
+  return { rows: out, bad };
+}
+function checkStaff(s) {
+  const p = parseStaff(s.staff.text); const mine = ((DATA && DATA.staff) || []).map(e => ({ id: e.id, name: e.n, no: e.no || '' }));
+  const has = r => mine.find(w => (r.no && String(w.no || '').toUpperCase() === r.no.toUpperCase()) || (!r.no && w.name.toLowerCase() === r.n.toLowerCase()));
+  const hit = new Set(p.rows.map(has).filter(Boolean).map(w => w.id));
+  Object.assign(s.staff, { rows: p.rows, bad: p.bad, add: p.rows.filter(r => !has(r)).length, upd: hit.size, gone: mine.filter(w => !hit.has(w.id) && w.id !== ME.id).map(w => w.id), remove: false });
+}
+async function shrinkLogo(file) {
+  const im = await loadImage(file); const sc = Math.min(1, 480 / im.width, 200 / im.height);
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.width * sc)); c.height = Math.max(1, Math.round(im.height * sc));
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  let url = c.toDataURL('image/png'); if (url.length > 120000) url = c.toDataURL('image/webp', 0.9); if (url.length > 120000 || !url.startsWith('data:image/webp')) { if (url.length > 120000) url = c.toDataURL('image/jpeg', 0.9); }
+  return url;
+}
+document.addEventListener('input', e => { const t = e.target; if (!state.sheet) return;
+  if (t.dataset && t.dataset.cobind && state.sheet.co) state.sheet.co[t.dataset.cobind] = t.value;
+  if (t.dataset && t.dataset.stbind && state.sheet.staff !== undefined) { state.sheet.staff = { text: t.value }; } });
+document.addEventListener('change', e => { const t = e.target; if (t.dataset && t.dataset.cobind && state.sheet && state.sheet.co) { state.sheet.co[t.dataset.cobind] = t.value; if (t.tagName === 'SELECT') renderSheet(); } });
 function sheetSettings(s) {
   const page = s.page || 'main';
   const back = `<button class="link" data-act="setPage" data-v="main" style="align-self:flex-start">← Settings</button>`;
@@ -2205,6 +2336,7 @@ function sheetSettings(s) {
     const pend = REQUESTS.filter(r => r.status === 'pending').length; const ons = PEOPLE.filter(p => !p.removed); const aw = ons.reduce((n, p) => n + (p.certs || []).filter(c => c.status === 'awaiting').length, 0);
     const item = (v, t, sub) => `<button class="li" data-act="setPage" data-v="${v}"><span class="grow"><b>${t}</b><span class="s" style="display:block">${sub}</span></span></button>`;
     return { title: 'Settings', body: `<div class="list">
+      ${item('company', 'Company set-up', `${esc(COMPANY.short || COMPANY.name)} · logo, details, ${flatDivs() ? 'no ' + divWord(true) : divWord(true)}, ${esc((PACK[COMPANY.pack] || {}).name || 'all work types')}, staff list`)}
       ${item('requests', 'Requests waiting', pend ? `${pend} waiting for your approval` : 'Nothing waiting')}
       ${item('sites', 'Sites and notifications', `${Object.keys(SITES).length} site${Object.keys(SITES).length === 1 ? '' : 's'} · ${Object.keys(SITES).filter(k => !siteNotifyOn(k)).length} with notifications off`)}
       ${item('roles', 'Supervisors and PINs', `${Object.values(ROLES).filter(r => r.role !== 'worker').length} people with supervisor or Safety Manager access`)}
@@ -2238,16 +2370,17 @@ function sheetSettings(s) {
       <div class="rowbtns"><button class="btn grow" data-act="sigDraw">${ic('pen')}Draw it</button><button class="btn grow" data-act="sigUpload">${ic('camera')}Use a picture</button></div>
       ${errLine(s)}${s.sig ? '<button class="btn hivis block" data-act="sigSave">Save signature</button>' : ''}` }; }
   if (page === 'code') return { title: 'Company code', body: back + `<p class="muted">Every phone has to enter the new code once. Give it to staff yourself, never in a group chat.</p><div class="field"><label for="newCode">New code</label><input id="newCode" value="${esc(s.newCode || '')}" autocapitalize="characters" autocomplete="off"></div>${errLine(s)}<button class="btn ${state._codeArmed ? 'bad' : 'dark'}" data-act="changeCode">${state._codeArmed ? 'Tap again to change the code for everyone' : 'Change code'}</button>` };
+  if (page === 'company') return sheetCompany(s, back);
   if (page === 'lists') {
     const L = s.ld;
     const ta = (k, label) => `<div class="field"><label for="ls-${k}">${label} <span class="muted small">(one per line)</span></label><textarea id="ls-${k}" class="lstext" data-lbind="${k}">${esc(L[k].join('\n'))}</textarea></div>`;
     const dv = s.ldDiv ?? (L.divisions[0] || ''); const dk = dv ? (L.dailyDiv[dv] = L.dailyDiv[dv] || []) : L.daily;
     const dailyOpts = [{ key: 'dsti', label: 'DSTI' }, { key: 'toolbox', label: 'Toolbox talk' }, ...L.templates.filter(t => t.name.trim() && (!dv || t.divs.includes(dv))).map(t => ({ key: 'tpl:' + t.id, label: t.name }))];
     return { title: 'Lists', body: back + `<p class="muted small">Changes reach every phone within about a minute.</p>
-      <div class="field"><span class="lab">Daily checklist per division</span><div class="seg">${[...L.divisions, ''].map(x => `<button class="${dv === x ? 'on' : ''}" data-act="lsDiv" data-v="${esc(x)}">${esc(x || 'No division')}</button>`).join('')}</div>
+      <div class="field"><span class="lab">${flatDivs() ? 'Daily checklist' : 'Daily checklist per ' + esc(divWord())}</span><div class="seg" ${flatDivs() ? 'hidden' : ''}>${[...L.divisions, ''].map(x => `<button class="${dv === x ? 'on' : ''}" data-act="lsDiv" data-v="${esc(x)}">${esc(x || 'No division')}</button>`).join('')}</div>
         <div class="list">${dailyOpts.map(o => `<label class="chk"><input type="checkbox" data-lchk="${esc(o.key)}" ${dk.includes(o.key) ? 'checked' : ''}><span>${esc(o.label)}</span></label>`).join('')}</div>
         <span class="muted small">The checks that today’s DSTI calls for are added to the list by themselves.</span></div>
-      ${ta('divisions', 'Divisions (sites are grouped under these)')}${ta('hazards', 'DSTI hazards')}${ta('controls', 'DSTI controls')}${ta('ppe', 'PPE')}${ta('topics', 'Toolbox talk topics')}
+      ${flatDivs() ? '' : ta('divisions', divWord(true, true) + ' (sites are grouped under these)')}${ta('hazards', 'DSTI hazards')}${ta('controls', 'DSTI controls')}${ta('ppe', 'PPE')}${ta('topics', 'Toolbox talk topics')}
       <div class="field"><span class="lab">Inspection checklists</span><span class="muted small">Tap a division to show or hide a checklist for it.</span>${L.templates.map((t, i) => `<div class="tplbox"><input data-ltpl="${i}" data-f="name" value="${esc(t.name)}" placeholder="Checklist name" aria-label="Checklist name">${t.ref ? `<span class="muted small">${esc(t.ref)} · ${esc(FREQ[t.freq] || '')}</span>` : ''}<div class="seg">${L.divisions.map(x => `<button class="${t.divs.includes(x) ? 'on' : ''}" data-act="ltDiv" data-i="${i}" data-v="${esc(x)}">${esc(x.replace(/ \(ISS\)$/, '').replace('Infrastructure Security Solutions', 'ISS'))}</button>`).join('')}</div><textarea class="lstext" data-ltpl="${i}" data-f="items" aria-label="Checks, one per line">${esc(t.items.join('\n'))}</textarea><button class="btn sm" data-act="listDelTpl" data-i="${i}">Remove this checklist</button></div>`).join('')}<button class="btn sm" data-act="listAddTpl">${ic('plus')}Add a checklist</button></div>
       <div class="field"><span class="lab">Job types for staff checks</span><span class="muted small">Certificate codes from the platform, for example C01, C23, M03.</span>${L.jobs.map((j, i) => `<div class="tplbox"><input data-ljob="${i}" data-f="name" value="${esc(j.name)}" placeholder="Job name" aria-label="Job name"><input data-ljob="${i}" data-f="req" value="${esc(j.req.join(', '))}" placeholder="C01, C23, M03" aria-label="Certificate codes"><span class="muted small">${esc(j.req.map(c => COMPS[c] ? COMPS[c].name : c + ' (unknown code)').join(' · '))}</span><button class="btn sm" data-act="listDelJob" data-i="${i}">Remove this job type</button></div>`).join('')}<button class="btn sm" data-act="listAddJob">${ic('plus')}Add a job type</button></div>
       ${errLine(s)}<button class="btn hivis block" data-act="saveLists">Save lists</button>` };
@@ -2281,7 +2414,7 @@ const H = {
   skipPin: () => { state.needPin = false; setTok('', 'worker'); render(); },
   pinAgain: () => { state.sheet = null; renderSheet(); state.needPin = true; state.pinErr = ''; render(); },
   settings: () => { state.sheet = { kind: 'settings', page: 'main' }; renderSheet(); },
-  setPage: el => { const s = { kind: 'settings', page: el.dataset.v }; if (el.dataset.v === 'lists') s.ld = listsDraft(); if (el.dataset.v === 'code') { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = n => Array.from({ length: n }, () => a[Math.floor(Math.random() * a.length)]).join(''); s.newCode = 'HAR-' + r(4) + '-' + r(4); } state._codeArmed = false; state.sheet = s; renderSheet(); },
+  setPage: el => { const s = { kind: 'settings', page: el.dataset.v }; if (el.dataset.v === 'lists') s.ld = listsDraft(); if (el.dataset.v === 'code') { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = n => Array.from({ length: n }, () => a[Math.floor(Math.random() * a.length)]).join(''); s.newCode = docPfx + '-' + r(4) + '-' + r(4); } state._codeArmed = false; state.sheet = s; renderSheet(); },
   signInSheet: () => { if (state.site && !canLead()) { toast('Only supervisors on this site can sign people in.'); return; } if (!state.site) { state.sheet = { kind: 'site' }; renderSheet(); return; } state.siQuery = ''; state.sheet = { kind: 'signin', focus: 'siSearch' }; renderSheet(); },
   addPersonSheet: () => { if (!canAddPeople()) { toast('Only staff ' + adminName() + ' allows can add new people.'); return; } if (!state.site) { toast('Choose a site first.'); return; } state.sheet = { kind: 'addPerson', d: { name: '', idNo: '', idPhoto: '', company: '', trade: '', cell: '', inductionSig: null, err: '' } }; renderSheet(); },
   attAdd: async el => { const ok = await attSet(el.dataset.id, true); if (ok) { toast((WORKER[el.dataset.id]?.name || 'Person') + ' signed in to ' + curSite().short); renderSheet(); } },
@@ -2376,12 +2509,44 @@ const H = {
   listAddJob: () => { state.sheet.ld.jobs.push({ id: 'j' + uid(), name: '', req: [] }); renderSheet(); },
   listDelJob: el => { state.sheet.ld.jobs.splice(+el.dataset.i, 1); renderSheet(); },
   saveLists: () => saveLists(),
+  coLogo: () => { const i = $('#coLogoFile'); i.value = ''; i.onchange = async () => { const fl = i.files && i.files[0]; if (!fl) return; try { state.sheet.co.logo = await shrinkLogo(fl); renderSheet(); } catch { toast('Could not read that picture.'); } }; i.click(); },
+  coLogoOff: () => { state.sheet.co.logo = null; renderSheet(); },
+  coDivs: () => { const c = state.sheet.co; c.divisionsOn = !c.divisionsOn; renderSheet(); },
+  coSave: async el => {
+    const s = state.sheet, c = s.co; c.docPrefix = String(c.docPrefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if ((c.name || '').trim().length < 2) { s.err = 'Fill in the registered name.'; renderSheet(); return; }
+    if (!/^[A-Z0-9]{2,6}$/.test(c.docPrefix)) { s.err = 'The document prefix is 2 to 6 letters or digits, for example ABC.'; renderSheet(); return; }
+    const co = { name: c.name.trim(), short: (c.short || c.name).trim(), reg: c.reg || '', address: c.address || '', phone: c.phone || '', email: c.email || '', docPrefix: c.docPrefix,
+      divisionsOn: !!c.divisionsOn, pack: c.pack || '', labels: c.division && c.division.trim().length > 1 ? { division: c.division.trim() } : {}, logo: c.logo || null };
+    el.disabled = true; s.err = '';
+    try {
+      const saved = await rpc('hs_set_company', { tok: state.tok, co }); applyCompany(saved);
+      const boot = store.get('hsoc-boot', null); if (boot && boot.static) { boot.static.company = saved; store.set('hsoc-boot', boot); }
+      applyLists(LISTS); buildSites(); state.sheet = { kind: 'settings', page: 'main' }; render(); toast('Company set-up saved.');
+    } catch (e) { s.err = e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not save. Check the details and your signal.'; el.disabled = false; renderSheet(); }
+  },
+  staffFile: () => { const i = $('#staffFile'); i.value = ''; i.onchange = async () => { const fl = i.files && i.files[0]; if (!fl) return; const s = state.sheet; s.staff = { text: await fl.text() }; checkStaff(s); renderSheet(); }; i.click(); },
+  staffCheck: () => { const s = state.sheet; s.staff = { text: ($('#staffPaste') || {}).value || '' }; checkStaff(s); if (!s.staff.rows.length) toast('No staff rows found. Paste name, employee number, job title, department.'); renderSheet(); },
+  staffRemove: el => { state.sheet.staff.remove = !!el.checked; },
+  staffSave: async el => {
+    const s = state.sheet, st = s.staff; if (!st || !st.rows || !st.rows.length) return; el.disabled = true;
+    try { const r = await rpc('hs_set_staff', { tok: state.tok, rows: st.rows, remove: !!st.remove }); s.staff = null; state._bootSig = ''; await refreshBoot(); renderSheet();
+      toast(`Staff list updated: ${r.added} new, ${r.changed} changed${r.removed ? ', ' + r.removed + ' removed' : ''}. ${r.total} staff.`); }
+    catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not update the staff list.'); el.disabled = false; }
+  },
+  changeCompany: () => {
+    if (state.outbox.length) { toast('Records are still waiting to send. Wait for signal first.'); return; }
+    if (!state._ccArmed) { state._ccArmed = true; renderSheet(); setTimeout(() => { state._ccArmed = false; if (state.sheet && state.sheet.kind === 'menu') renderSheet(); }, 4000); return; }
+    if (SUPA && state.tok) rpc('hs_logout', { tok: state.tok }).catch(() => {});
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith(NS + 'hsoc-') && k !== NS + 'hsoc-theme' || k.startsWith(NS + 'sheq-')) localStorage.removeItem(k); } catch {}
+    store.set('hsoc-manual-code', true); location.reload();
+  },
   createSite: async el => {
-    const division = ($('#nsDiv') || {}).value || ''; if (!division) { toast('Choose the division this site falls under.'); $('#nsDiv').focus(); return; }
+    const division = flatDivs() ? ONE_DIV : ($('#nsDiv') || {}).value || ''; if (!division) { toast('Choose the ' + divWord() + ' this site falls under.'); $('#nsDiv').focus(); return; }
     const name = ($('#nsName').value || '').trim(); if (!name) { toast('Give the site a name.'); return; }
     const site = { id: 's' + uid(), name, division, project: $('#nsProject').value || '', area: ($('#nsArea').value || '').trim(), active: true, createdBy: ME.id, createdAt: new Date().toISOString() };
     el.disabled = true;
-    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push({ ...site, notify: true }); MEMBERS.push({ site: site.id, pid: ME.id, role: 'manager' }); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.newDiv = ''; state.sheet = null; renderSheet(); render(); toast('Site created under ' + division + ': ' + name); }
+    try { await rpc('hs_put_site', { tok: state.tok, site }); SITE_LIST.push({ ...site, notify: true }); MEMBERS.push({ site: site.id, pid: ME.id, role: 'manager' }); buildSites(); state.site = site.id; store.set('sheq-site', site.id); state.newDiv = ''; state.sheet = null; renderSheet(); render(); toast(flatDivs() ? 'Site created: ' + name : 'Site created under ' + division + ': ' + name); }
     catch (e) { toast(e.status === 401 || e.status === 403 ? 'Only staff ' + adminName() + ' allows can create sites.' : 'Could not create the site.'); el.disabled = false; }
   },
   closeSite: async () => { if (!state._closeArmed) { state._closeArmed = true; renderSheet(); setTimeout(() => { state._closeArmed = false; if (state.sheet && state.sheet.kind === 'site') renderSheet(); }, 4000); return; } state._closeArmed = false; const x = SITE_LIST.find(v => v.id === state.site); try { await rpc('hs_put_site', { tok: state.tok, site: { ...x, active: false } }); x.active = false; buildSites(); state.sheet = null; render(); toast('Site closed'); } catch { toast('Could not close the site.'); } },
@@ -2586,7 +2751,7 @@ document.addEventListener('input', e => {
 
 /* ================= boot ================= */
 if (store.get('sheq-demo-hidden', false)) $('#demoBar').hidden = true;
-$('#logo').src = LOGO;
+$('#logo').src = logoSrc();
 if (location.hash === '#alerts') { state._openAlerts = true; try { history.replaceState(null, '', location.pathname + location.search); } catch {} }
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
   const m = e.data || {};
