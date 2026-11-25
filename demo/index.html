@@ -451,6 +451,8 @@ if (TEST) { const tb = document.getElementById('testBar'); if (tb) tb.hidden = f
 if (CO_CFG && CO_CFG.demo) { const db = document.getElementById('demoCoBar'); if (db) db.hidden = false; }
 const DEF_COMPANY = { name: 'Harambe Technologies (Pty) Ltd', short: 'Harambe Technologies' };
 const COMPANY = { ...DEF_COMPANY };
+// a company's own folder never shows Harambe before its own details arrive
+const PRE_CO = CO_CFG ? { name: CO_CFG.label || (CO_CFG.demo ? 'Demo Company' : 'H&S on Command'), docPrefix: 'HAR' } : null;
 // a company without its own logo shows its initials (only Harambe falls back to the Harambe logo)
 const initialsLogo = n => { const w = String(n || 'H&S').replace(/\(.*?\)|pty|ltd|cc|inc/gi, '').trim().split(/\s+/).filter(Boolean); const t = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || 'HS').slice(0, 2)).toUpperCase();
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120"><rect width="240" height="120" rx="14" fill="#111"/><text x="120" y="78" font-family="Arial,Helvetica,sans-serif" font-size="56" font-weight="700" fill="#fff" text-anchor="middle">${t.replace(/[<&>]/g, '')}</text></svg>`); };
@@ -477,6 +479,7 @@ function applyCompany(co) {
   const dl = document.getElementById('demoLead'); if (dl) dl.textContent = /harambe/i.test(COMPANY.name || '') ? 'Staff and certificates as on the H&S on Command platform,' : 'Staff list and certificates as of';
   applyDocPrefix(COMPANY.docPrefix);
 }
+if (PRE_CO) applyCompany(PRE_CO);
 const DUE = 60;
 const ME = { name: SUPA ? '' : 'Manie van Loggerenberg', role: SUPA ? '' : 'Safety Manager', id: null };
 function setMe(id) { const w = WORKER[id]; if (!w) return false; ME.id = id; ME.name = w.name; ME.role = w.role; return true; }
@@ -902,7 +905,7 @@ function demoHTML() {
   const t = state.demo === 'ended' ? ['This demo has ended', 'Your demo link has ended. Ask the person who sent it to you for a new one.']
     : state.demo === 'unknown' ? ['That demo link does not work', 'Check that you opened the whole link, or ask the person who sent it to you for a new one.']
     : ['Demo link needed', 'Open the demo link you were sent. Each demo link is personal and works for a few days.'];
-  return `<div class="page gut"><div class="stack" style="padding-top:24px"><div class="hero"><img src="icon-hs-192.png" alt="H&amp;S on Command"><h1>${esc(t[0])}</h1><p>${esc(t[1])}</p></div></div></div>`;
+  return `<div class="signin gut"><div class="stack" style="padding-top:24px"><div class="hero"><img src="icon-hs-192.png" alt="H&amp;S on Command"><h1>${esc(t[0])}</h1><p>${esc(t[1])}</p></div></div></div>`;
 }
 function afterData() {
   state.needCode = false; state.codeErr = ''; noteKnownRequests();
@@ -1264,9 +1267,9 @@ function viewSignIn() {
 }
 function onData() { renderPill(); if (!state.flow) renderMain(true); renderOffice(); if (state.sheet && state.sheet.kind === 'record') renderSheet(); }
 function ownerEndedHTML() {
-  return `<div class="stack" style="padding-top:24px"><div class="hero"><img src="${logoSrc()}" alt=""><h1>Owner sign-in needed</h1>
+  return `<div class="signin gut"><div class="stack" style="padding-top:24px"><div class="hero"><img src="${logoSrc()}" alt=""><h1>Owner sign-in needed</h1>
     <p>${state.ownerOffline ? 'No signal. Open the company again once you are connected.' : 'Your owner sign-in has ended, or the 6-digit code is more than a day old. Sign in again on the company page.'}</p></div>
-    <button class="btn hivis block" data-act="leaveOwner">Go to the company page</button></div>`;
+    <button class="btn hivis block" data-act="leaveOwner">Go to the company page</button></div></div>`;
 }
 function renderMain(keepScroll) {
   const m = $('#main'); const top = m.scrollTop;
