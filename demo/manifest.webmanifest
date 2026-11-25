@@ -1,0 +1,31 @@
+{
+ "name": "H&S Demo Company",
+ "short_name": "H&S Demo",
+ "id": "./",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#ececec",
+ "theme_color": "#111316",
+ "lang": "en",
+ "icons": [
+  {
+   "src": "icon-hs-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-hs-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-hs-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

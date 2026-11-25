@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#15191c"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="H&amp;S TEST"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon-hs.png"><link rel="icon" type="image/png" href="favicon-hs.png"><title>TEST · H&amp;S on Command</title><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><script>try{var t=JSON.parse(localStorage.getItem("hsoc-test:hsoc-theme"));if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script><script src="config.js"></script></head><body><title>H&amp;S on Command</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#15191c"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="H&amp;S Test"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon-hs.png"><link rel="icon" type="image/png" href="favicon-hs.png"><title>Test Company · H&amp;S on Command</title><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><script>try{var t=JSON.parse(localStorage.getItem("hsoc-test:hsoc-theme"));if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script><script src="config.js"></script></head><body><title>H&amp;S on Command</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500&display=swap">
@@ -89,6 +89,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .testbar { flex: none; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 6px 12px; font-size: .74rem; color: #111; flex-wrap: wrap;
   background: repeating-linear-gradient(-45deg, #f6d32d 0 14px, #f1c40f 14px 28px); text-align: center; }
 .testbar b { letter-spacing: .12em; }
+.demobar { background: repeating-linear-gradient(-45deg, #e9ecef 0 14px, #dde1e5 14px 28px); }
+.ownerbar { flex: none; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 7px 14px; font-size: .8rem; background: #111316; color: #fff; border-bottom: 2px solid #fff; }
+.ownerbar a { color: #fff; font-weight: 700; text-decoration: underline; white-space: nowrap; }
 .cologo { background: #fff; border-radius: var(--r-sm); padding: 12px; display: flex; justify-content: center; align-items: center; min-height: 90px; }
 .cologo img { max-height: 90px; max-width: 100%; }
 .testhint { margin: 0; padding: 8px 12px; border-radius: var(--r-sm); background: #f6d32d; color: #111; font-size: .85rem; text-align: center; }
@@ -344,7 +347,9 @@ canvas.pad { width: 100%; height: 190px; background: #fff; border-radius: 12px; 
 
 <div class="stage">
   <div class="phone" id="phone">
-    <div class="testbar" id="testBar" hidden><b>TEST COPY</b><span>Made-up data · changes here never reach the live app</span></div>
+    <div class="testbar" id="testBar" hidden><b>TEST COMPANY</b><span>Made-up data · changes are tried here first</span></div>
+    <div class="testbar demobar" id="demoCoBar" hidden><b>DEMO COMPANY</b><span>Made-up data to try H&amp;S on Command</span></div>
+    <div class="ownerbar" id="ownerBar" hidden></div>
     <header class="top">
       <div class="top-row gut">
         <div class="brand grow">
@@ -404,7 +409,10 @@ const refNo = p => { const n = new Date(); return `${p}-${String(n.getDate()).pa
 const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
 const initials = n => n.split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('').toUpperCase();
 // the TEST copy (config test: {...}) keeps its own storage, so it never mixes with the live copy on the same phone
-const TEST = (window.HS_CONFIG && window.HS_CONFIG.test) || null; const NS = TEST ? 'hsoc-test:' : '';
+const TEST = (window.HS_CONFIG && window.HS_CONFIG.test) || null;
+const CO_CFG = (window.HS_CONFIG && window.HS_CONFIG.company) || null;   // a company's own folder: its section, its storage, the Demo code
+const NS = TEST ? 'hsoc-test:' : CO_CFG && CO_CFG.ns ? CO_CFG.ns : '';
+const HOME = (window.HS_CONFIG && window.HS_CONFIG.home) || null;          // the site's home (the owner's app is HOME + 'owner/')
 const store = {
   get(k, f) { try { const v = localStorage.getItem(NS + k); return v == null ? f : JSON.parse(v); } catch { return f; } },
   set(k, v) { try { localStorage.setItem(NS + k, JSON.stringify(v)); return true; } catch { return false; } },
@@ -439,7 +447,8 @@ const ic = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-
 let DATA = null;
 const LOGO = "data:image/png;base64,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";
 const SUPA = window.HS_CONFIG || null;
-if (TEST) { const tb = document.getElementById('testBar'); if (tb) tb.hidden = false; document.title = 'TEST · H&S on Command'; }
+if (TEST) { const tb = document.getElementById('testBar'); if (tb) tb.hidden = false; document.title = 'Test Company · H&S on Command'; }
+if (CO_CFG && CO_CFG.demo) { const db = document.getElementById('demoCoBar'); if (db) db.hidden = false; }
 const DEF_COMPANY = { name: 'Harambe Technologies (Pty) Ltd', short: 'Harambe Technologies' };
 const COMPANY = { ...DEF_COMPANY };
 // a company without its own logo shows its initials (only Harambe falls back to the Harambe logo)
@@ -537,7 +546,7 @@ const who = () => ({ tok: state.tok || null, me: ME.id || store.get('hsoc-me', '
 const APP_V = '2026-11-24';
 let seenBusy = false;
 function seenPing() {
-  if (!SUPA || !supaCk || seenBusy || !ME || !ME.id || isOffline()) return;
+  if (!SUPA || !supaCk || ownerMode || seenBusy || !ME || !ME.id || isOffline()) return;
   const k = 'hsoc-seen-' + ME.id; if (Date.now() - store.get(k, 0) < 30 * 60000) return;
   const ua = navigator.userAgent; const platform = /iPad/.test(ua) ? 'iPad' : /iPhone|iPod/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Macintosh/.test(ua) ? 'Mac' : 'Other';
   const installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -590,6 +599,7 @@ function rebuildCrew() {
   const staff = DATA.staff.map(e => ({ id: e.id, name: e.n, no: e.no || e.t || '', role: e.r.join(' / ') || e.t || 'Staff', div: e.d, req: e.req.filter(c => COMPS[c]), held: e.held, ap: e.ap, task: 'role' }));
   const all = staff.concat(PEOPLE.map(personToCrew));
   WORKER = Object.fromEntries(all.map(w => [w.id, w]));
+  if (ownerMode) WORKER.owner = { id: 'owner', name: 'H&S on Command (owner)', no: '', role: 'Owner', div: '', req: [], held: {}, task: 'role' };
   all.forEach(w => { const n = NEEDS[w.id]; if (Array.isArray(n)) w.req = [...new Set([...w.req, ...n.filter(c => COMPS[c])])]; });
   CREW = all.filter(w => !HIDDEN.has(w.id) && !(w.onsite && w.person.removed)).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -817,11 +827,37 @@ function allRecords() {
 
 /* ================= persistence ================= */
 let supaCk = '', pollT = null, recSig = '';
-let sect = store.get('hsoc-sect', '') || (TEST && TEST.schema) || '';   // the company's own section of the database (Harambe: public)
+let sect = CO_CFG && CO_CFG.sect ? CO_CFG.sect : store.get('hsoc-sect', '') || (TEST && TEST.schema) || '';   // the company's own section of the database (Harambe: public)
+/* ---------- owner mode ----------
+   Manie signs in on his own H&S on Command app (email, password, 6-digit code) and opens a company from there. The
+   company folder then works with his owner sign-in instead of the company code and a PIN: full Safety Manager rights,
+   shown as "H&S on Command (owner)". The database checks the sign-in on every call. */
+const OWNER_KEY = 'hsoc-owner-auth';   // shared by the owner's app and the company folders (same site)
+function ownerAuth() { try { return JSON.parse(localStorage.getItem(OWNER_KEY) || 'null'); } catch { return null; } }
+let ownerMode = false;
+(() => { const q = new URLSearchParams(location.search).get('owner');
+  if (q === '1') store.set('hsoc-ownermode', true); else if (q === '0') store.set('hsoc-ownermode', false);
+  if (q !== null) { try { history.replaceState(null, '', location.pathname); } catch {} }
+  ownerMode = !!SUPA && !!store.get('hsoc-ownermode', false) && !!ownerAuth(); })();
+const ownerHome = () => (HOME || '../') + 'owner/';
+let ownerRefreshing = null;
+async function ownerToken() {
+  const a = ownerAuth(); if (!a || !a.access_token) return null;
+  if ((a.expires_at || 0) * 1000 > Date.now() + 60000) return a.access_token;
+  if (!ownerRefreshing) ownerRefreshing = (async () => {
+    try { const r = await fetch(SUPA.supabaseUrl.replace(/\/$/, '') + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: SUPA.supabaseKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: a.refresh_token }) });
+      if (!r.ok) return null; const j = await r.json();
+      localStorage.setItem(OWNER_KEY, JSON.stringify({ ...a, access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || Math.floor(Date.now() / 1000) + (j.expires_in || 3600) }));
+      return j.access_token; } catch { return null; } finally { setTimeout(() => { ownerRefreshing = null; }, 0); } })();
+  return ownerRefreshing;
+}
+function ownerEnded() { if (state.ownerEnded) return; state.ownerEnded = true; render(); }
+function leaveOwner() { store.set('hsoc-ownermode', false); location.href = ownerHome(); }
 async function rpc(fn, args) {
   const h = { apikey: SUPA.supabaseKey, 'Content-Type': 'application/json' };
   if (/^eyJ/.test(SUPA.supabaseKey)) h.Authorization = 'Bearer ' + SUPA.supabaseKey;
   if (sect && sect !== 'public') h['Content-Profile'] = sect;   // the company's own section of the database
+  if (ownerMode) { const t = await ownerToken(); if (!t) { ownerEnded(); const e = new Error('owner sign-in ended'); e.status = 401; throw e; } h.Authorization = 'Bearer ' + t; }
   const r = await fetch(SUPA.supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(Object.assign({ ck: supaCk }, args || {})) });
   if (!r.ok) { const e = new Error('rpc ' + fn + ' ' + r.status); e.status = r.status; throw e; }
   const t = await r.text(); return t ? JSON.parse(t) : null;
@@ -835,6 +871,39 @@ async function dirFind(code) {
   const t = await r.text(); return t ? JSON.parse(t) : null;
 }
 const OFF_MSG = 'H&S on Command is switched off for your company at the moment. Your Safety Manager can tell you more.';
+/* ---------- the Demo Company: personal demo links ----------
+   The owner makes a link per person (a few days). The link's key works like the company code until it ends; the
+   database checks it on every call. Without a link, or once it has ended, the demo shows a short message. */
+async function dirCall(fn, args) {
+  const h = { apikey: SUPA.supabaseKey, 'Content-Type': 'application/json', 'Content-Profile': 'hsdir' };
+  if (/^eyJ/.test(SUPA.supabaseKey)) h.Authorization = 'Bearer ' + SUPA.supabaseKey;
+  const r = await fetch(SUPA.supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(args || {}) });
+  if (!r.ok) { const e = new Error(fn + ' ' + r.status); e.status = r.status; throw e; }
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const isDemo = () => !!(CO_CFG && CO_CFG.demo);
+async function demoGate() {
+  const q = new URLSearchParams(location.search).get('d');
+  if (q) { const t = q.trim().toUpperCase(); if (t !== store.get('hsoc-demo-tok', '')) { store.set('hsoc-boot', null); setTok('', 'worker'); store.set('hsoc-me', ''); }
+    store.set('hsoc-demo-tok', t); try { history.replaceState(null, '', location.pathname); } catch {} }
+  const tok = store.get('hsoc-demo-tok', '');
+  if (!tok) { state.demo = 'none'; render(); return false; }
+  let st = null; try { st = await dirCall('hs_demo_seen', { tok }); } catch {}
+  if (st && st.status !== 'ok') { demoEnded(st.status); return false; }
+  if (st && st.expires) store.set('hsoc-demo-until', st.expires);
+  store.set('hsoc-ck', tok); renderDemoBar(); return true;
+}
+function demoEnded(why) { state.demo = why === 'unknown' ? 'unknown' : 'ended'; supaCk = ''; store.set('hsoc-ck', ''); store.set('hsoc-boot', null); setTok('', 'worker'); render(); }
+function renderDemoBar() {
+  const b = document.getElementById('demoCoBar'); if (!b || !isDemo()) return; const u = store.get('hsoc-demo-until', null);
+  const sp = b.querySelector('span'); if (sp) sp.textContent = 'Made-up data' + (u && !ownerMode ? ' · this demo ends ' + new Date(u).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' }) : ' to try H&S on Command');
+}
+function demoHTML() {
+  const t = state.demo === 'ended' ? ['This demo has ended', 'Your demo link has ended. Ask the person who sent it to you for a new one.']
+    : state.demo === 'unknown' ? ['That demo link does not work', 'Check that you opened the whole link, or ask the person who sent it to you for a new one.']
+    : ['Demo link needed', 'Open the demo link you were sent. Each demo link is personal and works for a few days.'];
+  return `<div class="page gut"><div class="stack" style="padding-top:24px"><div class="hero"><img src="icon-hs-192.png" alt="H&amp;S on Command"><h1>${esc(t[0])}</h1><p>${esc(t[1])}</p></div></div></div>`;
+}
 function afterData() {
   state.needCode = false; state.codeErr = ''; noteKnownRequests();
   if (!ME.id && !setMe(store.get('hsoc-me', ''))) state.needSignIn = true;
@@ -842,10 +911,30 @@ function afterData() {
   render(); startPolling(); flush(); checkTok(); pushSync(); loadActivity(); maybeOpenAlerts();
 }
 function maybeOpenAlerts() { if (state._openAlerts && ME.id && !state.needSignIn && !state.needPin && !state.needCode) { state._openAlerts = false; openAlerts(); } }
+// owner mode: no company code, no PIN; the boot comes with the owner's sign-in
+async function ownerStart() {
+  supaCk = 'OWNER'; setTok('owner', 'admin');   // no company code: the owner's sign-in opens the company (the database checks it on every call); owner rights before the data is built, so every site shows
+  const cached = store.get('hsoc-boot', null);
+  if (cached && applyBoot(cached)) ownerReady();
+  try {
+    const b = await rpc('hs_boot', { tok: 'owner', me: 'owner' });
+    if (!b) { ownerEnded(); return; }
+    store.set('hsoc-boot', b); applyBoot(b); if (!cached) ownerReady(); else { ownerSelf(); onData(); }
+    if (Date.now() - store.get('hsoc-owner-visit', 0) > 30 * 60000) rpc('hs_owner_visit', {}).then(() => store.set('hsoc-owner-visit', Date.now())).catch(() => {});
+  } catch (e) { if (!cached && e.status !== 401) { state.ownerOffline = true; render(); } }
+}
+function ownerSelf() {
+  WORKER.owner = { id: 'owner', name: 'H&S on Command (owner)', no: '', role: 'Owner', div: '', req: [], held: {}, task: 'role' };
+  setMe('owner'); setTok('owner', 'admin'); state.needSignIn = false; state.needPin = false; state.needCode = false;
+}
+function ownerReady() { ownerSelf(); state.codeErr = ''; afterData(); }
 async function initSupa() {
   state.mode = 'supa'; renderPill();
+  if (ownerMode) { await ownerStart(); return; }
+  if (isDemo() && !(await demoGate())) return;
   supaCk = store.get('hsoc-ck', '');
-  if (!supaCk && TEST && TEST.code && !store.get('hsoc-manual-code', false)) { submitCode(TEST.code); return; }   // the TEST copy fills in its own company code
+  if (!supaCk && TEST && TEST.code && !store.get('hsoc-manual-code', false)) { submitCode(TEST.code); return; }   // the Test Company fills in its own company code
+  if (!supaCk && CO_CFG && CO_CFG.code && !store.get('hsoc-manual-code', false)) { submitCode(CO_CFG.code); return; }   // the Demo link fills in the Demo code
   if (!supaCk) { state.needCode = true; render(); return; }
   const cached = store.get('hsoc-boot', null);
   if (cached && applyBoot(cached)) afterData();
@@ -857,6 +946,8 @@ async function initSupa() {
 }
 // the code stopped working: switched off by the owner (keep the code, say so), or changed by the Safety Manager
 async function codeGone() {
+  if (ownerMode) { ownerEnded(); return; }
+  if (isDemo()) { let st = null; try { st = await dirCall('hs_demo_seen', { tok: store.get('hsoc-demo-tok', '') }); } catch {} if (!st || st.status !== 'ok') { demoEnded(st && st.status); return; } }
   const ck = supaCk; if (!ck || state._codeGone) return; state._codeGone = true;
   let f; try { f = await dirFind(ck); } catch {} state._codeGone = false;
   if (f && f.active === false) { codeRejected(OFF_MSG); state.codeKeep = ck; render(); return; }
@@ -866,7 +957,7 @@ function codeRejected(msg) { supaCk = ''; store.set('hsoc-ck', ''); state.codeKe
 async function submitCode(code) {
   const ck = code.trim().toUpperCase(); if (!ck) return;
   const btn = $('#codeForm button'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
-  const f = await dirFind(ck);
+  const f = CO_CFG && CO_CFG.sect ? undefined : await dirFind(ck);
   if (f === null) { state.codeErr = 'That code is not right. Check it and try again.'; render(); return; }
   if (f && f.error) { state.codeErr = f.error === 'busy' ? 'Too many tries. Wait a minute and try again.' : 'Could not reach the server. Check your signal and try again.'; render(); return; }
   if (f && f.active === false) { state.codeErr = OFF_MSG; render(); return; }
@@ -887,7 +978,7 @@ async function checkTok() {
 // The server sends phone notifications (web push). Each phone is switched on once; after that it follows whoever
 // uses the phone. The Safety Manager gets everything, others only their sites and what is meant for them.
 function pushEnv() {
-  if (!SUPA) return 'none';
+  if (!SUPA || ownerMode) return 'none';   // the owner's notifications come through his own app
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   if (ios && !standalone) return 'ios';
@@ -1119,7 +1210,11 @@ function renderNav() {
 let toastT = null;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
 
-function render() { seenPing(); if (isAdmin() && !state.appUse) loadAppUse(); $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
+function renderOwnerBar() {
+  const ob = document.getElementById('ownerBar'); if (!ob) return; ob.hidden = !ownerMode;
+  if (ownerMode) ob.innerHTML = `<span>You’re in <b>${esc(COMPANY.short || COMPANY.name)}</b> as owner</span><a href="${esc(ownerHome())}" data-act="leaveOwner">Companies</a>`;
+}
+function render() { renderOwnerBar(); seenPing(); if (isAdmin() && !state.appUse) loadAppUse(); $('#demoBar').hidden = !DATA || !!state.needCode || store.get('sheq-demo-hidden', false); renderPill(); renderBell(); renderNav(); renderMain(); renderOffice(); renderSheet(); }
 function viewCode() {
   return `<div class="signin gut">
     <div class="hero"><img src="${sect && sect !== 'public' && sect !== 'hstest' ? logoSrc() : LOGO}" alt="H&amp;S on Command"><h1>H&amp;S on Command</h1><p>Enter your company code. You only do this once on this phone.</p></div>
@@ -1140,7 +1235,7 @@ function viewPin() {
       <label for="pinInput" class="lab" style="font-weight:700;font-size:.9rem">PIN</label>
       <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
       ${state.pinErr ? `<p class="small" style="color:var(--bad);font-weight:600" role="alert">${esc(state.pinErr)}</p>` : ''}
-      ${TEST && TEST.pin && sect === TEST.schema ? `<p class="testhint">Test copy: the PIN for everyone is <b>${esc(TEST.pin)}</b></p>` : COMPANY.demoPin ? `<p class="testhint">Demo company: the PIN for everyone is <b>${esc(COMPANY.demoPin)}</b></p>` : ''}
+      ${TEST && TEST.pin && sect === TEST.schema ? `<p class="testhint">Test Company: the PIN for everyone is <b>${esc(TEST.pin)}</b></p>` : COMPANY.demoPin ? `<p class="testhint">Demo company: the PIN for everyone is <b>${esc(COMPANY.demoPin)}</b></p>` : ''}
       <button class="btn dark block" type="submit">Sign in</button>
     </form>
     <button class="btn ghost block" data-act="skipPin">Continue without PIN (worker access)</button>
@@ -1168,10 +1263,17 @@ function viewSignIn() {
   </div>`;
 }
 function onData() { renderPill(); if (!state.flow) renderMain(true); renderOffice(); if (state.sheet && state.sheet.kind === 'record') renderSheet(); }
+function ownerEndedHTML() {
+  return `<div class="stack" style="padding-top:24px"><div class="hero"><img src="${logoSrc()}" alt=""><h1>Owner sign-in needed</h1>
+    <p>${state.ownerOffline ? 'No signal. Open the company again once you are connected.' : 'Your owner sign-in has ended, or the 6-digit code is more than a day old. Sign in again on the company page.'}</p></div>
+    <button class="btn hivis block" data-act="leaveOwner">Go to the company page</button></div>`;
+}
 function renderMain(keepScroll) {
   const m = $('#main'); const top = m.scrollTop;
   let html = '';
   if (state.tab === 'office' && !officeOK()) state.tab = 'home';
+  if (ownerMode && (state.ownerEnded || (state.ownerOffline && !DATA))) { $('#nav').hidden = true; m.innerHTML = ownerEndedHTML(); return; }
+  if (!ownerMode && state.demo) { $('#nav').hidden = true; m.innerHTML = demoHTML(); return; }
   if (state.needCode) { $('#nav').hidden = true; m.innerHTML = viewCode(); return; }
   if (!DATA) { $('#nav').hidden = true; m.innerHTML = '<div class="page gut"><div class="empty">Loading…</div></div>'; return; }
   if (state.needPin && !state.needSignIn) { $('#nav').hidden = true; m.innerHTML = viewPin(); const f = $('#pinInput'); if (f) try { f.focus({ preventScroll: true }); } catch {} return; }
@@ -1225,7 +1327,7 @@ function viewHome() {
   const att = attention(state.site);
   const todays = todayRecs(state.site); const daily = dailyList(state.site); const regular = regularList(state.site);
   return `<div class="page gut">
-    <div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${greet}, ${esc(ME.name.split(' ')[0])}</h1></div>
+    <div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${ownerMode ? greet : `${greet}, ${esc(ME.name.split(' ')[0])}`}</h1></div>
     ${pushPrompt()}
     ${divisionsHTML()}
     <section class="sitecard"${divColour(curSite().division) ? ` style="border-top:5px solid ${divColour(curSite().division)}"` : ''}>
@@ -1760,11 +1862,12 @@ function sheetMenu() {
       <div class="li" style="flex-direction:column;align-items:stretch;gap:8px"><b>Appearance</b><div class="seg" role="group" aria-label="Appearance">${[['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<button data-act="setTheme" data-v="${v}" class="${(store.get('hsoc-theme', 'auto') || 'auto') === v ? 'on' : ''}" aria-pressed="${(store.get('hsoc-theme', 'auto') || 'auto') === v}">${l}</button>`).join('')}</div><span class="s muted small">Automatic follows your phone’s setting.</span></div>
       ${SUPA ? `<button class="li" data-act="pushSheet"><span class="grow"><b>Notifications</b><span class="s" style="display:block">${esc(PUSH_TXT[state.push || 'off'] || '')}</span></span>${state.push === 'on' ? '<span class="chip good">On</span>' : '<span class="chip">Off</span>'}</button>` : ''}
       <button class="toggle" data-act="simOffline"><span class="grow"><b>Simulate no signal</b><span class="s muted small" style="display:block">For testing: log something, then switch this off and watch it send.</span></span><span class="sw ${state.simOffline ? 'on' : ''}" aria-hidden="true"></span></button>
-      ${state.mode === 'local' || state.mode === 'supa' ? `<button class="li" data-act="changeUser"><span class="grow"><b>Change user</b><span class="s" style="display:block">Now: ${esc(ME.name)}</span></span></button>` : ''}
+      ${ownerMode ? `<button class="li" data-act="leaveOwner"><span class="grow"><b>Back to your companies</b><span class="s" style="display:block">Your H&amp;S on Command company page</span></span></button>` : ''}
+      ${!ownerMode && (state.mode === 'local' || state.mode === 'supa') ? `<button class="li" data-act="changeUser"><span class="grow"><b>Change user</b><span class="s" style="display:block">Now: ${esc(ME.name)}</span></span></button>` : ''}
       <button class="li" data-act="switchSite"><span class="grow"><b>${SUPA ? 'Switch site' : 'Switch team or project'}</b><span class="s" style="display:block">Now: ${esc(curSite().name)}</span></span></button>
       ${SUPA && roleOf(ME.id) !== 'worker' && !isSup() ? `<button class="li" data-act="pinAgain"><span class="grow"><b>Sign in with your PIN</b><span class="s" style="display:block">For supervisor tools</span></span></button>` : ''}
       ${isAdmin() ? `<button class="li" data-act="settings"><span class="grow"><b>Settings</b><span class="s" style="display:block">Company set-up, supervisors and PINs, people added on site, lists, company code</span></span></button>` : ''}
-      ${SUPA && (TEST || isAdmin()) ? `<button class="li" data-act="changeCompany"><span class="grow"><b>${state._ccArmed ? 'Tap again to leave ' + esc(COMPANY.short || COMPANY.name) : 'Change company'}</b><span class="s" style="display:block">${state._ccArmed ? 'This phone forgets the company code and signs you out' : 'Enter another company’s code'}</span></span></button>` : ''}
+      ${SUPA && !ownerMode && !(CO_CFG && CO_CFG.sect) && (TEST || isAdmin()) ? `<button class="li" data-act="changeCompany"><span class="grow"><b>${state._ccArmed ? 'Tap again to leave ' + esc(COMPANY.short || COMPANY.name) : 'Change company'}</b><span class="s" style="display:block">${state._ccArmed ? 'This phone forgets the company code and signs you out' : 'Enter another company’s code'}</span></span></button>` : ''}
     </div>
     <div class="card"><p class="eyebrow">Signed in as</p><p style="margin-top:4px"><b>${esc(ME.name)}</b>${ME.role ? ' · ' + esc(ME.role) : ''}, ${esc(COMPANY.name)}</p>${SUPA ? `<p style="margin-top:4px"><span class="chip ${isSup() ? 'good' : ''}">${state.authRole === 'admin' ? 'Safety Manager access' : state.authRole === 'supervisor' ? 'Supervisor access' : 'Worker access'}</span></p>` : ''}<p class="muted small" style="margin-top:8px">Staff and certificate dates come from the H&amp;S on Command platform as at ${esc(fmtDate(DATA.asOf))}. This is a test version: anything you log here is seen by everyone using the app.</p></div>` };
 }
@@ -1856,7 +1959,7 @@ function divisionsHTML() {
 }
 const todoHTML = x => `<button class="todo ${x.done ? 'done' : ''}" data-act="${x.act || 'startFlow'}" ${x.id ? `data-id="${esc(x.id)}"` : `data-flow="${x.flow}"`} ${x.tpl ? `data-tpl="${x.tpl}"` : ''}><span class="box">${ic('check')}</span><span class="grow"><span class="t" style="font-weight:600">${esc(x.label)}</span><span class="s muted small" style="display:block">${x.done ? (x.doneLabel || 'Done today') : esc(x.sub)}</span></span>${x.done ? '' : '<span class="chip">Start</span>'}</button>`;
 function viewNoSite() {
-  return `<div class="page gut"><div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>Hello, ${esc(ME.name.split(' ')[0])}</h1></div>
+  return `<div class="page gut"><div><p class="eyebrow">${esc(new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${ownerMode ? 'Hello' : `Hello, ${esc(ME.name.split(' ')[0])}`}</h1></div>
     ${pushPrompt()}
     ${divisionsHTML()}
     <div class="card stack" style="gap:10px"><h2>${isAdmin() ? 'No site set up yet' : 'You are not on a site yet'}</h2><p class="muted">${canAddPeople() ? 'Create a site under its division, then sign your team in to it each morning.' : isSup() ? `Ask ${esc(adminName())} or the site manager to add you to a site.` : 'Your supervisor adds you to a site when you start there. You can still report an incident.'}</p>
@@ -2295,7 +2398,21 @@ function sheetCompany(s, back) {
       ${st && st.rows ? `<div class="banner info">${st.rows.length} rows read · ${st.add} new · ${st.upd} already in the app${st.gone.length ? ` · ${st.gone.length} in the app but not in this list` : ''}${st.bad ? ` · ${st.bad} rows skipped (no name)` : ''}</div>
         ${st.gone.length ? `<label class="chk"><input type="checkbox" data-act="staffRemove" ${st.remove ? 'checked' : ''}><span>Remove the ${st.gone.length} staff not in this list (people who left). Their records stay.</span></label>` : ''}
         <button class="btn dark block" data-act="staffSave">Update the staff list</button>` : ''}
-    </section>` };
+    </section>
+    ${ownerVisitsHTML(s)}` };
+}
+// when H&S on Command's owner opened this company (the company's Safety Manager can always see this)
+function ownerVisitsHTML(s) {
+  if (!SUPA) return '';
+  if (s.ownerVisits === undefined) { s.ownerVisits = null; rpc('hs_owner_visits', { tok: state.tok }).then(v => { s.ownerVisits = v || []; if (state.sheet === s) renderSheet(); }).catch(() => { s.ownerVisits = false; }); }
+  const v = s.ownerVisits;
+  const day = d => new Date(d + 'T12:00:00').toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const tm = t => new Date(t).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  return `<section class="card stack" style="gap:8px"><h3>H&amp;S on Command owner visits</h3>
+    <p class="muted small">Every day the owner of H&amp;S on Command opened ${esc(COMPANY.short || COMPANY.name)} in the last 90 days (for set-up and support).</p>
+    ${v === null ? '<p class="muted small">Loading…</p>' : v === false ? '<p class="muted small">Could not load the list.</p>' : !v.length ? '<p class="small">Not opened by the owner in the last 90 days.</p>'
+      : `<div class="list">${v.map(x => `<div class="li"><span class="grow"><span class="t">${esc(day(x.day))}</span><span class="s" style="display:block">${esc(tm(x.first))}${x.last !== x.first ? ' to ' + esc(tm(x.last)) : ''}${x.opens > 1 ? ' · opened ' + x.opens + ' times' : ''}</span></span></div>`).join('')}</div>`}
+  </section>`;
 }
 function parseStaff(text) {
   const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -2534,6 +2651,7 @@ const H = {
       toast(`Staff list updated: ${r.added} new, ${r.changed} changed${r.removed ? ', ' + r.removed + ' removed' : ''}. ${r.total} staff.`); }
     catch (e) { toast(e.status === 401 || e.status === 403 ? 'Sign in with your PIN first.' : 'Could not update the staff list.'); el.disabled = false; }
   },
+  leaveOwner: e => { if (e && e.preventDefault) e.preventDefault(); leaveOwner(); },
   changeCompany: () => {
     if (state.outbox.length) { toast('Records are still waiting to send. Wait for signal first.'); return; }
     if (!state._ccArmed) { state._ccArmed = true; renderSheet(); setTimeout(() => { state._ccArmed = false; if (state.sheet && state.sheet.kind === 'menu') renderSheet(); }, 4000); return; }

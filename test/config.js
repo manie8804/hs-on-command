@@ -1,1 +1,1 @@
-window.HS_CONFIG = {"supabaseUrl": "https://vywlqtgqryikrtwglcnw.supabase.co", "supabaseKey": "sb_publishable_Mfr8pVcrQFbq2bcvqSNlCw_K46DunDl", "test": {"code": "TEST-HSOC", "pin": "2468", "schema": "hstest"}};
+window.HS_CONFIG = {"supabaseUrl": "https://vywlqtgqryikrtwglcnw.supabase.co", "supabaseKey": "sb_publishable_Mfr8pVcrQFbq2bcvqSNlCw_K46DunDl", "home": "/hs-on-command/", "test": {"code": "TEST-HSOC", "pin": "2468", "schema": "hstest"}};

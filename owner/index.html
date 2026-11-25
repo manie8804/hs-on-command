@@ -4,14 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>H&amp;S on Command · Owner</title>
-<link rel="icon" href="../favicon-hs.png">
+<meta name="theme-color" content="#111316">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="H&amp;S on Command">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>H&amp;S on Command</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
 :root {
-  --ground: #ececec; --surface: #fff; --surface-2: #f3f3f3; --ink: #14181b; --ink-2: #48525a; --muted: #76818a; --line: #d6d6d6;
-  --chrome: #15191c; --chrome-ink: #f3f5f6; --good: #1d8549; --good-bg: #e1f2e7; --warn: #a96400; --warn-bg: #fcefd6; --bad: #c42e2e; --bad-bg: #fae3e1;
+  --ground: #ececec; --surface: #fff; --surface-2: #f3f3f3; --ink: #14181b; --ink-2: #48525a; --muted: #6f7a83; --line: #d6d6d6;
+  --chrome: #111316; --chrome-ink: #f3f5f6; --good: #1d8549; --good-bg: #e1f2e7; --warn: #a96400; --warn-bg: #fcefd6; --bad: #c42e2e; --bad-bg: #fae3e1;
   --r: 14px; --r-sm: 10px; --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif; --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
@@ -20,148 +26,308 @@
 :root[data-theme="dark"] { --ground: #0e1113; --surface: #171b1e; --surface-2: #1f2428; --ink: #eef1f3; --ink-2: #bac2c8; --muted: #87929a; --line: #2c3338;
   --chrome: #090b0d; --good: #45c97b; --good-bg: #12301e; --warn: #f0a531; --warn-bg: #382810; --bad: #ff6b63; --bad-bg: #3a1715; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/1.45 var(--font-body); }
-header { background: var(--chrome); color: var(--chrome-ink); padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
-header img { width: 36px; height: 36px; border-radius: 8px; }
-header b { font: 700 1.25rem var(--font-display); letter-spacing: .01em; display: block; }
-header span { font-size: .8rem; opacity: .75; }
-header .grow { flex: 1; }
-main { max-width: 980px; margin: 0 auto; padding: 18px 16px 48px; display: grid; gap: 16px; }
-h1 { font: 700 1.9rem/1.1 var(--font-display); margin: 4px 0 0; }
-h2 { font: 700 1.35rem/1.15 var(--font-display); margin: 0; }
+html, body { margin: 0; }
+body { background: var(--ground); color: var(--ink); font: 16px/1.45 var(--font-body); min-height: 100vh; }
+header { background: var(--chrome); color: var(--chrome-ink); padding: calc(12px + env(safe-area-inset-top)) 16px 12px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 5; }
+header img { width: 38px; height: 38px; border-radius: 9px; background: #fff; }
+header b { font: 700 1.3rem/1 var(--font-display); letter-spacing: .01em; display: block; }
+header span { font-size: .78rem; opacity: .75; }
+header .grow { flex: 1; min-width: 0; }
+header button { background: none; border: 1px solid rgba(255,255,255,.35); color: var(--chrome-ink); border-radius: 8px; padding: 6px 10px; font: 600 .85rem var(--font-body); cursor: pointer; }
+main { max-width: 980px; margin: 0 auto; padding: 18px 16px calc(48px + env(safe-area-inset-bottom)); display: grid; gap: 16px; }
+h1 { font: 700 1.9rem/1.1 var(--font-display); margin: 2px 0 0; }
+h2 { font: 700 1.3rem/1.15 var(--font-display); margin: 0; }
 p { margin: 0; }
-.muted { color: var(--muted); } .small { font-size: .85rem; }
+.muted { color: var(--muted); } .small { font-size: .86rem; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+.narrow { max-width: 440px; width: 100%; margin: 6vh auto 0; }
 .field { display: grid; gap: 6px; }
 label { font-weight: 600; font-size: .9rem; }
-input, textarea { font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 11px 12px; width: 100%; }
+input, textarea { font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; width: 100%; }
+input.code { font: 700 1.6rem/1 var(--font-display); letter-spacing: .35em; text-align: center; }
 textarea { min-height: 70px; resize: vertical; }
-.btn { font: 600 1rem var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--r-sm); padding: 11px 16px; cursor: pointer; }
+.btn { font: 600 1rem var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--r-sm); padding: 12px 16px; cursor: pointer; text-align: center; text-decoration: none; display: inline-block; }
 .btn.dark { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .btn.sm { padding: 7px 12px; font-size: .9rem; }
 .btn:disabled { opacity: .55; cursor: default; }
 .link { background: none; border: 0; color: var(--ink-2); text-decoration: underline; font: inherit; cursor: pointer; padding: 0; }
 .err { color: var(--bad); font-weight: 600; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
-.kpi b { font: 700 1.8rem/1 var(--font-display); display: block; font-variant-numeric: tabular-nums; }
-.kpi span { font-size: .82rem; color: var(--muted); }
-.co { display: grid; gap: 10px; }
-.co-h { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
-.co-h .grow { flex: 1; min-width: 180px; }
-.chip { display: inline-block; font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.ok { color: var(--good); font-weight: 600; }
+.qr { background: #fff; border-radius: var(--r-sm); padding: 10px; justify-self: center; }
+.qr img { width: 200px; height: 200px; display: block; }
+.secret { font: 600 1rem ui-monospace, Menlo, Consolas, monospace; word-break: break-all; background: var(--surface-2); padding: 8px 10px; border-radius: 8px; }
+.cos { display: grid; gap: 12px; }
+.co { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.co-main { display: flex; gap: 14px; align-items: center; padding: 14px; width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.co-logo { width: 64px; height: 64px; border-radius: 12px; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; flex: none; }
+.co-logo img { max-width: 56px; max-height: 56px; }
+.co-name { font: 700 1.25rem/1.1 var(--font-display); display: block; }
+.co-sub { font-size: .84rem; color: var(--muted); display: block; margin-top: 3px; }
+.co .grow { flex: 1; min-width: 0; }
+.co-go { font-size: 1.4rem; color: var(--muted); }
+.co-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 14px 12px; }
+.chip { display: inline-block; font-size: .74rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
 .chip.good { background: var(--good-bg); color: var(--good); } .chip.bad { background: var(--bad-bg); color: var(--bad); } .chip.warn { background: var(--warn-bg); color: var(--warn); }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
-.stats div { background: var(--surface-2); border-radius: var(--r-sm); padding: 8px 10px; }
-.stats b { font: 700 1.3rem/1.1 var(--font-display); display: block; font-variant-numeric: tabular-nums; }
-.stats span { font-size: .78rem; color: var(--muted); }
-.sw { position: relative; width: 46px; height: 28px; border-radius: 99px; background: var(--line); flex: none; transition: background .15s; }
+.bell { display: inline-flex; align-items: center; gap: 6px; font: 600 .84rem var(--font-body); border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.bell.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.bell svg { width: 15px; height: 15px; }
+.manage { border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 12px; background: var(--surface-2); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.stats div { background: var(--surface); border-radius: var(--r-sm); padding: 8px 10px; }
+.stats b { font: 700 1.25rem/1.1 var(--font-display); display: block; font-variant-numeric: tabular-nums; }
+.stats span { font-size: .76rem; color: var(--muted); }
+.sw { position: relative; width: 46px; height: 28px; border-radius: 99px; background: var(--line); flex: none; }
 .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 .sw.on { background: var(--good); } .sw.on::after { transform: translateX(18px); }
 .toggle { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; text-align: left; }
-.signin { max-width: 420px; margin: 8vh auto 0; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-@media (max-width: 520px) { main { padding: 14px 16px 40px; } h1 { font-size: 1.6rem; } }
+.list { display: grid; gap: 2px; }
+.list div { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
+.list div:last-child { border-bottom: 0; }
+.warnbox { background: var(--bad-bg); border-radius: var(--r-sm); padding: 12px; display: grid; gap: 10px; }
+.sr { position: absolute; left: -9999px; }
 </style>
 </head>
 <body>
-<header><img src="../icon-hs-192.png" alt=""><div class="grow"><b>H&amp;S on Command</b><span>Owner · companies and usage</span></div><button class="link" id="out" hidden style="color:var(--chrome-ink)">Sign out</button></header>
-<main id="main"></main>
+<header><img src="icon-192.png" alt=""><div class="grow"><b>H&amp;S on Command</b><span id="who">Owner</span></div><button id="out" hidden>Sign out</button></header>
+<main id="main"><p class="muted">Loading…</p></main>
 <script src="../config.js"></script>
 <script>
 (() => {
-const C = window.HS_CONFIG || {}, main = document.getElementById('main');
+'use strict';
+const C = window.HS_CONFIG || {}, URL0 = String(C.supabaseUrl || '').replace(/\/$/, ''), KEY = C.supabaseKey || '';
+const OWNER_KEY = 'hsoc-owner-auth';   // shared with the company folders on this site
+const HOME = location.pathname.replace(/owner\/[^/]*$/, '');
+const main = document.getElementById('main');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const KEY = 'hsoc-owner-tok';
-let tok = ''; try { tok = sessionStorage.getItem(KEY) || ''; } catch {}
-let state = { mode: tok ? 'list' : 'login', err: '', list: null, edit: null };
-async function call(fn, args) {
-  const h = { apikey: C.supabaseKey, 'Content-Type': 'application/json', 'Content-Profile': 'hsdir' };
-  if (/^eyJ/.test(C.supabaseKey || '')) h.Authorization = 'Bearer ' + C.supabaseKey;
-  const r = await fetch(String(C.supabaseUrl || '').replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(args || {}) });
-  if (!r.ok) { const e = new Error(fn + ' ' + r.status); e.status = r.status; throw e; }
-  const t = await r.text(); return t ? JSON.parse(t) : null;
+const BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+const BELL_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="M2 2l20 20"/></svg>';
+let S = { mode: 'loading', err: '', note: '' };
+
+// ---------- the owner's sign-in (Supabase's own: email, password, 6-digit code) ----------
+const load = () => { try { return JSON.parse(localStorage.getItem(OWNER_KEY) || 'null'); } catch { return null; } };
+const save = a => { try { a ? localStorage.setItem(OWNER_KEY, JSON.stringify(a)) : localStorage.removeItem(OWNER_KEY); } catch {} };
+const claimsOf = t => { try { return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { return {}; } };
+const keep = (j, email) => { const a = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || Math.floor(Date.now() / 1000) + (j.expires_in || 3600), email: email || (j.user && j.user.email) || (load() || {}).email || '' }; save(a); return a; };
+async function auth(path, opt = {}) {
+  const h = { apikey: KEY, 'Content-Type': 'application/json' }; if (opt.token) h.Authorization = 'Bearer ' + opt.token;
+  const r = await fetch(URL0 + '/auth/v1' + path, { method: opt.method || 'POST', headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined });
+  const t = await r.text(); let j = {}; try { j = t ? JSON.parse(t) : {}; } catch {}
+  if (!r.ok) { const e = new Error(j.msg || j.error_description || j.message || ('error ' + r.status)); e.status = r.status; e.code = j.error_code || j.error || ''; throw e; }
+  return j;
 }
-const setTok = t => { tok = t || ''; try { tok ? sessionStorage.setItem(KEY, tok) : sessionStorage.removeItem(KEY); } catch {} };
+let refreshing = null;
+async function token() {
+  const a = load(); if (!a) return null;
+  if ((a.expires_at || 0) * 1000 > Date.now() + 60000) return a.access_token;
+  if (!refreshing) refreshing = auth('/token?grant_type=refresh_token', { body: { refresh_token: a.refresh_token } }).then(j => keep(j, a.email).access_token).catch(() => { save(null); return null; }).finally(() => { setTimeout(() => { refreshing = null; }, 0); });
+  return refreshing;
+}
+async function rpc(fn, args) {
+  const t = await token(); const h = { apikey: KEY, 'Content-Type': 'application/json', 'Content-Profile': 'hsdir' };
+  if (t) h.Authorization = 'Bearer ' + t; else if (/^eyJ/.test(KEY)) h.Authorization = 'Bearer ' + KEY;
+  const r = await fetch(URL0 + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(args || {}) });
+  if (!r.ok) { const e = new Error(fn + ' ' + r.status); e.status = r.status; throw e; }
+  const x = await r.text(); return x ? JSON.parse(x) : null;
+}
+const device = () => { const u = navigator.userAgent; const os = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac/.test(u) ? 'Mac' : 'Other';
+  const br = /Edg\//.test(u) ? 'Edge' : /CriOS|Chrome\//.test(u) ? 'Chrome' : /FxiOS|Firefox\//.test(u) ? 'Firefox' : /Safari\//.test(u) ? 'Safari' : 'browser';
+  const app = (matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? ' · home-screen app' : ''; return os + ' · ' + br + app; };
+
+// decide what to show
+async function route() {
+  S.err = ''; const a = load();
+  if (!a) { S.mode = 'signin'; return view(); }
+  const t = await token(); if (!t) { S.mode = 'signin'; S.err = S.err || ''; return view(); }
+  let user; try { user = await auth('/user', { method: 'GET', token: t }); } catch (e) { save(null); S.mode = 'signin'; return view(); }
+  S.email = user.email; S.factor = (user.factors || []).find(f => f.factor_type === 'totp' && f.status === 'verified') || null;
+  S.unverified = (user.factors || []).filter(f => f.status !== 'verified');
+  const aal = claimsOf(t).aal;
+  if (aal !== 'aal2') { S.mode = S.factor ? 'code' : 'enroll'; return view(); }
+  let st; try { st = await rpc('hs_owner_state'); } catch { S.mode = 'offline'; return view(); }
+  if (st.owner) { S.mode = 'companies'; view(); return loadCompanies(); }
+  if (!st.claimed) { S.mode = 'claim'; return view(); }
+  if (st.codeOld) { S.mode = 'code'; S.note = 'Your 6-digit code is more than a day old. Enter a new one.'; return view(); }
+  S.mode = 'notowner'; view();
+}
+async function loadCompanies() {
+  try { const [list, ins] = await Promise.all([rpc('hs_owner_overview'), rpc('hs_owner_hello', { device: device() })]); S.list = list; S.signins = ins; S.at = new Date(); }
+  catch (e) { if (e.status === 401 || e.status === 403) return route(); S.list = S.list || []; }
+  view();
+}
 const when = d => { if (!d) return 'never'; const t = new Date(d), m = (Date.now() - t) / 60000;
   if (m < 2) return 'just now'; if (m < 60) return Math.round(m) + ' min ago'; if (m < 1440) return Math.round(m / 60) + ' h ago'; if (m < 2880) return 'yesterday';
   return t.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }); };
-const KIND = { live: ['Client', 'good'], demo: ['Demo', 'warn'], test: ['Test', ''] };
-const ERR = { wrong: 'That is not right.', locked: 'Too many wrong tries. Wait 15 minutes.', pin: 'Choose a PIN of 6 to 12 digits.', setup: 'No owner PIN yet. Use your one-time set-up code.' };
+const initials = n => { const w = String(n || '').replace(/\(.*?\)|pty|ltd|cc|inc/gi, '').trim().split(/\s+/).filter(Boolean); const t = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || 'HS').slice(0, 2)).toUpperCase();
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="14" fill="#111"/><text x="60" y="78" font-family="Arial" font-size="48" font-weight="700" fill="#fff" text-anchor="middle">${t.replace(/[<&>]/g, '')}</text></svg>`); };
+const n = (v, one, many) => { v = v || 0; return v + ' ' + (v === 1 ? one : many || one + 's'); };
+const KIND = { test: ['Test', 'warn'], live: ['Client', 'good'], demo: ['Demo', ''] };
+const ERR = { wrong: 'That set-up code is not right.', locked: 'Too many wrong tries. Wait 15 minutes.', taken: 'This H&S on Command already has an owner. Sign in with the owner account.', code: 'Enter your 6-digit code first.' };
 
 function view() {
-  document.getElementById('out').hidden = state.mode !== 'list';
-  if (state.mode === 'login' || state.mode === 'setup') {
-    const setup = state.mode === 'setup';
-    main.innerHTML = `<section class="signin card"><h1>${setup ? 'First sign-in' : 'Owner sign-in'}</h1>
-      <p class="muted small">${setup ? 'Enter the one-time set-up code you were given and choose your owner PIN (6 to 12 digits). The code stops working once your PIN is set.' : 'Usage counts and the on/off switch for every company. You never see a company’s staff or records here.'}</p>
-      <form id="f" class="co" autocomplete="off">
-        ${setup ? '<div class="field"><label for="setup">One-time set-up code</label><input id="setup" autocapitalize="characters" spellcheck="false"></div>' : ''}
-        <div class="field"><label for="pin">${setup ? 'Choose your owner PIN' : 'Owner PIN'}</label><input id="pin" type="password" inputmode="numeric" autocomplete="${setup ? 'new-password' : 'current-password'}"></div>
-        ${state.err ? `<p class="err small" role="alert">${esc(state.err)}</p>` : ''}
-        <button class="btn dark" type="submit">${setup ? 'Set PIN and sign in' : 'Sign in'}</button>
+  document.getElementById('out').hidden = !load();
+  document.getElementById('who').textContent = S.mode === 'companies' ? 'Owner · ' + (S.email || '') : 'Owner';
+  const m = S.mode;
+  if (m === 'loading') { main.innerHTML = '<p class="muted">Loading…</p>'; return; }
+  if (m === 'offline') { main.innerHTML = `<section class="card narrow"><h1>No connection</h1><p class="muted">The company page needs signal. Try again once you are connected.</p><button class="btn dark" data-a="retry">Try again</button></section>`; return; }
+  if (m === 'signin' || m === 'signup') {
+    const up = m === 'signup';
+    main.innerHTML = `<section class="card narrow"><h1>${up ? 'Create your owner account' : 'Sign in'}</h1>
+      <p class="muted small">${up ? 'Once only. Use your own email address and a password of at least 10 characters that you use nowhere else. After the email link, you set up the 6-digit code and give your one-time set-up code.' : 'Your email and password, then the 6-digit code from the authenticator app on your phone.'}</p>
+      <form id="f" class="field" style="gap:12px" autocomplete="on">
+        <div class="field"><label for="em">Email</label><input id="em" type="email" autocomplete="username" required value="${esc(S.email || (load() || {}).email || '')}"></div>
+        <div class="field"><label for="pw">${up ? 'Choose a password' : 'Password'}</label><input id="pw" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" required minlength="${up ? 10 : 1}"></div>
+        ${up ? '<div class="field"><label for="pw2">Password again</label><input id="pw2" type="password" autocomplete="new-password" required></div>' : ''}
+        ${S.err ? `<p class="err small" role="alert">${esc(S.err)}</p>` : ''}
+        <button class="btn dark" type="submit">${up ? 'Create account' : 'Sign in'}</button>
       </form>
-      <button class="link small" id="swap">${setup ? 'I already have an owner PIN' : 'First time? Use the set-up code'}</button></section>`;
-    document.getElementById('swap').onclick = () => { state.mode = setup ? 'login' : 'setup'; state.err = ''; view(); };
-    document.getElementById('f').onsubmit = async e => { e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; state.err = '';
-      try { const r = setup ? await call('hs_owner_setup', { setup: document.getElementById('setup').value.trim(), pin: document.getElementById('pin').value.trim() }) : await call('hs_owner_login', { pin: document.getElementById('pin').value.trim() });
-        if (r && r.token) { setTok(r.token); state.mode = 'list'; load(); return; }
-        state.err = ERR[r && r.error] || 'Could not sign in.'; if (r && r.error === 'setup') state.mode = 'setup'; }
-      catch { state.err = 'Could not reach the server. Check your connection.'; }
-      view(); };
-    return;
+      <button class="link small" data-a="${up ? 'tosignin' : 'tosignup'}">${up ? 'I already have an owner account' : 'First time? Create your owner account'}</button></section>`;
+    document.getElementById('f').onsubmit = up ? doSignup : doSignin; return;
   }
-  if (!state.list) { main.innerHTML = '<p class="muted">Loading…</p>'; return; }
-  const L = state.list, live = L.filter(c => c.kind === 'live');
-  const sum = k => live.reduce((t, c) => t + (c[k] || 0), 0);
-  main.innerHTML = `<div><p class="muted small">${new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Companies</h1></div>
-    <div class="kpis">
-      <div class="kpi"><b>${live.filter(c => c.active).length}</b><span>client companies switched on${live.some(c => !c.active) ? ` · ${live.filter(c => !c.active).length} off` : ''}</span></div>
-      <div class="kpi"><b>${sum('staff')}</b><span>staff in client companies</span></div>
-      <div class="kpi"><b>${sum('phones7')}</b><span>phones used in the last 7 days</span></div>
-      <div class="kpi"><b>${sum('records30')}</b><span>records logged in the last 30 days</span></div>
-    </div>
-    ${L.map(c => { const k = KIND[c.kind] || ['', ''], ed = state.edit === c.sect;
-      return `<section class="card co"><div class="co-h"><div class="grow"><h2>${esc(c.label)}</h2><p class="muted small">${esc(c.name || '')}${c.name && c.name !== c.label ? ' · ' : ''}section ${esc(c.sect)} · since ${esc(new Date(c.created).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' }))}</p></div>
-        <span class="chip ${k[1]}">${k[0]}</span>
-        <button class="toggle" data-sw="${esc(c.sect)}" ${c.switchWorks ? '' : 'disabled title="Switch works once this company is on database version 8"'}><span class="chip ${c.active ? 'good' : 'bad'}">${c.active ? 'On' : 'Off'}</span><span class="sw ${c.active ? 'on' : ''}" aria-hidden="true"></span><span class="sr" style="position:absolute;left:-9999px">Switch ${esc(c.label)} ${c.active ? 'off' : 'on'}</span></button></div>
-        ${c.note && !ed ? `<p class="small">${esc(c.note)}</p>` : ''}
-        ${!c.switchWorks ? '<p class="muted small">The on/off switch takes effect once this company is on database version 8.</p>' : ''}
-        ${state.confirm === c.sect ? `<div class="card" style="background:var(--bad-bg);border-color:transparent"><p class="small"><b>Switch ${esc(c.label)} off?</b> Their staff can no longer open the app until you switch it on again. Nothing is deleted.</p><div class="row"><button class="btn dark sm" data-off="${esc(c.sect)}">Switch off</button><button class="btn sm" data-cancel="1">Cancel</button></div></div>` : ''}
-        <div class="stats">
-          <div><b>${c.staff ?? '–'}</b><span>staff</span></div><div><b>${c.sites ?? '–'}</b><span>sites</span></div>
-          <div><b>${c.phones ?? '–'}</b><span>phones ever · ${c.installed ?? 0} on home screen</span></div><div><b>${c.phones7 ?? '–'}</b><span>phones in the last 7 days</span></div>
-          <div><b>${c.records30 ?? '–'}</b><span>records in 30 days · ${c.records7 ?? 0} in 7</span></div><div><b>${c.pins ?? '–'}</b><span>PINs set</span></div>
-        </div>
-        <p class="muted small">Last used ${esc(when(c.lastOpen))} · last record ${esc(when(c.lastRecord))}${c.switchedAt ? ' · switched ' + (c.active ? 'on' : 'off') + ' ' + esc(when(c.switchedAt)) : ''}</p>
-        ${ed ? `<div class="field"><label for="lb-${esc(c.sect)}">Your name for this company</label><input id="lb-${esc(c.sect)}" value="${esc(c.label)}"></div>
-          <div class="field"><label for="nt-${esc(c.sect)}">Your note (plan, fee, contact)</label><textarea id="nt-${esc(c.sect)}">${esc(c.note || '')}</textarea></div>
-          <div class="row"><button class="btn dark sm" data-save="${esc(c.sect)}">Save</button><button class="btn sm" data-cancel="1">Cancel</button></div>`
-          : `<div><button class="link small" data-edit="${esc(c.sect)}">Edit name and note</button></div>`}
-      </section>`; }).join('')}
-    <p class="muted small">Counts only. Names, records, photos and documents stay inside each company’s own space. Updated ${esc(when(state.at))} · <button class="link small" id="re">Refresh</button></p>`;
-  main.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => { const c = L.find(x => x.sect === b.dataset.sw); if (c.active) { state.confirm = c.sect; view(); } else flip(c.sect, true); });
-  main.querySelectorAll('[data-off]').forEach(b => b.onclick = () => flip(b.dataset.off, false));
-  main.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => { state.confirm = null; state.edit = null; view(); });
-  main.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { state.edit = b.dataset.edit; view(); });
-  main.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => { const s = b.dataset.save; b.disabled = true;
-    try { await call('hs_owner_note', { tok, sect: s, label: document.getElementById('lb-' + s).value, note: document.getElementById('nt-' + s).value }); state.edit = null; load(); }
-    catch (e) { if (e.status === 401 || e.status === 403) return signOut(); b.textContent = 'Could not save: the name needs at least 2 letters'; b.disabled = false; } });
-  document.getElementById('re').onclick = load;
+  if (m === 'checkemail') { main.innerHTML = `<section class="card narrow"><h1>Check your email</h1><p>We sent a link to <b>${esc(S.email)}</b>. Open it on this phone or computer; it brings you back here to set up the 6-digit code.</p><button class="link small" data-a="tosignin">Back to sign in</button></section>`; return; }
+  if (m === 'enroll') {
+    main.innerHTML = `<section class="card narrow"><h1>Set up your 6-digit code</h1>
+      <p class="muted small">Install an authenticator app on your phone if you don’t have one (Google Authenticator or Microsoft Authenticator). Add an account in it by scanning this code, then type the 6 digits it shows.</p>
+      ${S.qr ? `<div class="qr"><img src="${esc(S.qr)}" alt="QR code for your authenticator app"></div><p class="small muted">Can’t scan? Type this key in the app instead:</p><p class="secret">${esc(S.secret)}</p>` : '<p class="muted">Preparing…</p>'}
+      <form id="f" class="field" style="gap:12px"><label for="cd">6-digit code</label><input id="cd" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+        ${S.err ? `<p class="err small" role="alert">${esc(S.err)}</p>` : ''}<button class="btn dark" type="submit" ${S.qr ? '' : 'disabled'}>Confirm</button></form></section>`;
+    document.getElementById('f').onsubmit = doEnrollVerify; if (!S.qr && !S.enrolling) doEnroll(); return;
+  }
+  if (m === 'code') {
+    main.innerHTML = `<section class="card narrow"><h1>6-digit code</h1><p class="muted small">${esc(S.note || 'Open the authenticator app on your phone and type the code for H&S on Command.')}</p>
+      <form id="f" class="field" style="gap:12px"><label for="cd" class="sr">6-digit code</label><input id="cd" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required autofocus>
+        ${S.err ? `<p class="err small" role="alert">${esc(S.err)}</p>` : ''}<button class="btn dark" type="submit">Continue</button></form></section>`;
+    document.getElementById('f').onsubmit = doCode; return;
+  }
+  if (m === 'claim') {
+    main.innerHTML = `<section class="card narrow"><h1>One-time set-up code</h1><p class="muted small">Last step: the set-up code you were given makes this account the owner of H&S on Command. It works once only; after this no other account can become the owner.</p>
+      <form id="f" class="field" style="gap:12px"><label for="sc">Set-up code</label><input id="sc" autocapitalize="characters" spellcheck="false" required>
+        ${S.err ? `<p class="err small" role="alert">${esc(S.err)}</p>` : ''}<button class="btn dark" type="submit">Make me the owner</button></form></section>`;
+    document.getElementById('f').onsubmit = doClaim; return;
+  }
+  if (m === 'notowner') { main.innerHTML = `<section class="card narrow"><h1>Not the owner account</h1><p class="muted">${esc(S.email || 'This account')} is not the owner of H&S on Command. Sign out and sign in with the owner account.</p><button class="btn dark" data-a="signout">Sign out</button></section>`; return; }
+  // ---------- the company page ----------
+  if (!S.list) { main.innerHTML = '<p class="muted">Loading your companies…</p>'; return; }
+  const L = S.list;
+  main.innerHTML = `<div><p class="muted small">${new Date().toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>Your companies</h1></div>
+    <div class="cos">${L.map(c => { const k = KIND[c.kind] || ['', '']; const name = c.short || c.name || c.label; const open = S.open === c.sect;
+      return `<section class="co"><button class="co-main" data-go="${esc(c.sect)}"><span class="co-logo"><img src="${esc(c.logo || (c.sect === 'public' ? HOME + 'apple-touch-icon-hs.png' : initials(name)))}" alt=""></span>
+        <span class="grow"><span class="co-name">${esc(name)}</span><span class="co-sub">${n(c.staff, 'staff', 'staff')} · ${n(c.sites, 'site')} · ${n(c.phones7, 'phone')} this week · ${n(c.records30, 'record')} in 30 days</span></span><span class="co-go" aria-hidden="true">›</span></button>
+        <div class="co-bar"><span class="chip ${k[1]}">${k[0]}</span><span class="chip ${c.active ? 'good' : 'bad'}">${c.active ? 'On' : 'Switched off'}</span>
+          <button class="bell ${c.notify ? 'on' : ''}" data-bell="${esc(c.sect)}" aria-pressed="${c.notify ? 'true' : 'false'}">${c.notify ? BELL : BELL_OFF}${c.notify ? 'Notifications on' : 'Notifications off'}</button>
+          ${c.kind === 'demo' ? `<button class="bell ${S.demoFor === c.sect ? 'on' : ''}" data-share="${esc(c.sect)}">Demo links</button>` : ''}
+          <button class="link small" data-manage="${esc(c.sect)}" style="margin-left:auto">${open ? 'Close' : 'Manage'}</button></div>
+        ${!c.ownerWorks ? `<p class="small muted" style="padding:0 14px 12px">Opens as you (with the company code and your PIN) until owner access is applied to ${esc(name)}.</p>` : ''}
+        ${S.demoFor === c.sect ? demoHTML(c) : ''}${open ? manageHTML(c) : ''}</section>`; }).join('')}</div>
+    ${S.note ? `<p class="ok small">${esc(S.note)}</p>` : ''}
+    <section class="card"><h2>Owner sign-ins</h2><p class="muted small">Every sign-in to your owner account. If you see one that was not you, sign out everywhere and change your password.</p>
+      <div class="list">${(S.signins || []).map(x => `<div><span>${esc(new Date(x.at).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span><span class="muted">${esc(x.device || '')}${x.me ? ' · <b>this one</b>' : ''}</span></div>`).join('') || '<div><span class="muted">None yet</span></div>'}</div></section>
+    <p class="muted small">Updated ${esc(when(S.at))} · <button class="link small" data-a="refresh">Refresh</button></p>`;
 }
-async function flip(sect, on) {
-  state.confirm = null;
-  try { await call('hs_owner_switch', { tok, sect, active: on }); } catch (e) { if (e.status === 401 || e.status === 403) return signOut(); }
-  load();
+const demoUrl = (c, t) => location.origin + HOME + (c.app || 'demo/') + '?d=' + t;
+const fmtD = d => new Date(d).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' });
+function demoHTML(c) {
+  const links = (S.demoLinks || []).filter(d => d.sect === c.sect); const nl = S.newLink;
+  return `<div class="manage">
+    <h2>Personal demo link</h2><p class="muted small">One link per person. It opens straight into ${esc(c.short || c.label)} and stops working after the days you choose.</p>
+    ${nl ? `<div class="card" style="gap:8px"><p class="small"><b>Link for ${esc(nl.label)}</b> · works until ${esc(fmtD(nl.expires))}</p><p class="secret">${esc(nl.url)}</p>
+      <div class="row"><button class="btn dark sm" data-copy="${esc(nl.url)}">Copy link</button>${navigator.share ? `<button class="btn sm" data-sendlink="${esc(nl.url)}">Send…</button>` : ''}<button class="link small" data-a="newlink">Make another</button></div></div>`
+    : `<div class="field"><label for="dl-who">Who is it for?</label><input id="dl-who" placeholder="For example: Pieter, ABC Fibre" value="${esc(S.dlWho || '')}"></div>
+      <div class="row">${[3, 7, 14].map(d => `<button class="bell ${(S.days || 7) === d ? 'on' : ''}" data-days="${d}">${d} days</button>`).join('')}</div>
+      ${S.dlErr ? `<p class="err small">${esc(S.dlErr)}</p>` : ''}<button class="btn dark sm" data-mklink="${esc(c.sect)}">Make the link</button>`}
+    ${links.length ? `<div class="list">${links.map(d => `<div><span><b>${esc(d.label)}</b><br><span class="muted">${d.open ? 'works until ' + esc(fmtD(d.expires)) : 'ended ' + esc(fmtD(d.ended || d.expires))} · ${d.opens ? 'opened ' + d.opens + (d.opens === 1 ? ' time' : ' times') + ', last ' + esc(when(d.last)) : 'not opened yet'}</span></span>
+      <span class="row" style="flex-wrap:nowrap">${d.open ? `<button class="link small" data-copy="${esc(demoUrl(c, d.token))}">Copy</button><button class="link small" data-endlink="${esc(d.id)}">End now</button>` : ''}</span></div>`).join('')}</div>` : '<p class="muted small">No demo links yet.</p>'}
+  </div>`;
 }
-async function load() {
-  try { state.list = await call('hs_owner_overview', { tok }); state.at = new Date(); }
-  catch (e) { if (e.status === 401 || e.status === 403 || e.status === 400) return signOut(); state.list = state.list || []; }
-  view();
+async function loadDemoLinks() { try { S.demoLinks = await rpc('hs_owner_demo_links'); } catch (x) { if (x.status === 401) return route(); } view(); }
+function manageHTML(c) {
+  return `<div class="manage">
+    <div class="stats"><div><b>${c.staff ?? '–'}</b><span>staff</span></div><div><b>${c.sites ?? '–'}</b><span>sites</span></div>
+      <div><b>${c.phones ?? '–'}</b><span>phones ever · ${c.installed ?? 0} on home screen</span></div><div><b>${c.phones7 ?? '–'}</b><span>phones in the last 7 days</span></div>
+      <div><b>${c.records30 ?? '–'}</b><span>records in 30 days · ${c.records7 ?? 0} in 7</span></div><div><b>${c.pins ?? '–'}</b><span>PINs set</span></div></div>
+    <p class="muted small">Last used ${esc(when(c.lastOpen))} · last record ${esc(when(c.lastRecord))}${c.switchedAt ? ' · switched ' + (c.active ? 'on' : 'off') + ' ' + esc(when(c.switchedAt)) : ''}</p>
+    <button class="toggle" data-sw="${esc(c.sect)}" ${c.switchWorks ? '' : 'disabled'}><span class="sw ${c.active ? 'on' : ''}" aria-hidden="true"></span><span><b>${c.active ? 'Switched on' : 'Switched off'}</b><span class="muted small" style="display:block">${c.switchWorks ? 'Switched off, its staff cannot open the app. Nothing is deleted.' : 'The switch works once this company is on database version 8.'}</span></span></button>
+    ${S.confirm === c.sect ? `<div class="warnbox"><p class="small"><b>Switch ${esc(c.short || c.label)} off?</b> Their staff can no longer open the app until you switch it on again. Nothing is deleted.</p><div class="row"><button class="btn dark sm" data-off="${esc(c.sect)}">Switch off</button><button class="btn sm" data-a="cancel">Cancel</button></div></div>` : ''}
+    <div class="field"><label for="lb-${esc(c.sect)}">Your name for this company</label><input id="lb-${esc(c.sect)}" value="${esc(c.label)}"></div>
+    <div class="field"><label for="nt-${esc(c.sect)}">Your note (plan, fee, contact)</label><textarea id="nt-${esc(c.sect)}">${esc(c.note || '')}</textarea></div>
+    <div class="row"><button class="btn dark sm" data-save="${esc(c.sect)}">Save name and note</button><span class="muted small">Section ${esc(c.sect)} · since ${esc(new Date(c.created).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' }))}</span></div>
+  </div>`;
 }
-function signOut() { if (tok) call('hs_owner_logout', { tok }).catch(() => {}); setTok(''); state = { mode: 'login', err: '', list: null }; view(); }
+
+// ---------- actions ----------
+async function doSignin(e) { e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; S.err = '';
+  const email = document.getElementById('em').value.trim(), pw = document.getElementById('pw').value; S.email = email;
+  try { const j = await auth('/token?grant_type=password', { body: { email, password: pw } }); keep(j, email); return route(); }
+  catch (x) { S.err = x.code === 'email_not_confirmed' ? 'Confirm your email first: open the link we sent you.' : x.status === 400 ? 'Email or password is not right.' : x.status === 429 ? 'Too many tries. Wait a few minutes.' : 'Could not reach the server. Check your connection.'; }
+  view(); }
+async function doSignup(e) { e.preventDefault(); const b = e.target.querySelector('button'); S.err = '';
+  const email = document.getElementById('em').value.trim(), pw = document.getElementById('pw').value, pw2 = document.getElementById('pw2').value; S.email = email;
+  if (pw.length < 10) { S.err = 'Use at least 10 characters.'; return view(); } if (pw !== pw2) { S.err = 'The two passwords are not the same.'; return view(); }
+  b.disabled = true;
+  try { const j = await auth('/signup?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { body: { email, password: pw } });
+    if (j.access_token) { keep(j, email); return route(); } S.mode = 'checkemail'; }
+  catch (x) { S.err = x.code === 'signup_disabled' ? 'New accounts are closed. Sign in with the owner account.' : x.code === 'weak_password' ? 'That password is too weak. Make it longer.' : (x.message || 'Could not create the account.'); }
+  view(); }
+async function doEnroll() { S.enrolling = true;
+  try { const t = await token();
+    for (const f of S.unverified || []) { try { await auth('/factors/' + f.id, { method: 'DELETE', token: t }); } catch {} }
+    const j = await auth('/factors', { token: t, body: { factor_type: 'totp', friendly_name: 'H&S on Command owner ' + new Date().toISOString().slice(0, 16), issuer: 'H&S on Command' } });
+    S.fid = j.id; S.qr = j.totp && j.totp.qr_code; S.secret = j.totp && j.totp.secret; }
+  catch (x) { S.err = 'Could not start the code set-up: ' + x.message; }
+  S.enrolling = false; view(); }
+async function verify(fid, code) { const t = await token(); const ch = await auth('/factors/' + fid + '/challenge', { token: t, body: {} });
+  const j = await auth('/factors/' + fid + '/verify', { token: t, body: { challenge_id: ch.id, code } }); keep(j); }
+async function doEnrollVerify(e) { e.preventDefault(); const code = document.getElementById('cd').value.trim(); S.err = '';
+  try { await verify(S.fid, code); S.qr = null; S.note = ''; return route(); } catch (x) { S.err = x.status === 422 || x.status === 400 ? 'That code is not right. Wait for a fresh code and try again.' : 'Could not check the code.'; view(); } }
+async function doCode(e) { e.preventDefault(); const code = document.getElementById('cd').value.trim(); S.err = '';
+  try { await verify(S.factor.id, code); S.note = ''; return route(); } catch (x) { S.err = x.status === 422 || x.status === 400 ? 'That code is not right. Wait for a fresh code and try again.' : x.status === 429 ? 'Too many tries. Wait a few minutes.' : 'Could not check the code.'; view(); } }
+async function doClaim(e) { e.preventDefault(); S.err = '';
+  try { const r = await rpc('hs_owner_claim', { setup: document.getElementById('sc').value.trim() }); if (r && (r.ok || r.error === 'done')) return route(); S.err = ERR[r && r.error] || 'Could not finish.'; }
+  catch { S.err = 'Could not reach the server.'; } view(); }
+async function signOut() { const t = load() && (await token()); if (t) auth('/logout', { token: t }).catch(() => {}); save(null); S = { mode: 'signin', err: '', note: '' }; view(); }
+
 document.getElementById('out').onclick = signOut;
-view(); if (tok) load();
+main.addEventListener('click', async ev => {
+  const el = ev.target.closest('button'); if (!el || (el.type === 'submit' && el.form)) return; const d = el.dataset;
+  if (d.a === 'tosignup') { S.mode = 'signup'; S.err = ''; return view(); }
+  if (d.a === 'tosignin') { S.mode = 'signin'; S.err = ''; return view(); }
+  if (d.a === 'retry') { S.mode = 'loading'; view(); return route(); }
+  if (d.a === 'signout') return signOut();
+  if (d.a === 'refresh') return loadCompanies();
+  if (d.a === 'cancel') { S.confirm = null; return view(); }
+  if (d.go) { const c = S.list.find(x => x.sect === d.go); if (!c) return;
+    location.href = HOME + (c.app || '') + (c.ownerWorks ? '?owner=1' : ''); return; }
+  if (d.manage) { S.open = S.open === d.manage ? null : d.manage; S.confirm = null; return view(); }
+  if (d.bell) { const c = S.list.find(x => x.sect === d.bell); el.disabled = true; try { await rpc('hs_owner_bell', { sect: c.sect, notify: !c.notify }); c.notify = !c.notify; } catch (x) { if (x.status === 401) return route(); } return view(); }
+  if (d.share) { S.demoFor = S.demoFor === d.share ? null : d.share; S.newLink = null; S.dlErr = ''; view(); if (S.demoFor) loadDemoLinks(); return; }
+  if (d.days) { S.dlWho = (document.getElementById('dl-who') || {}).value || S.dlWho; S.days = +d.days; return view(); }
+  if (d.mklink) { const c = S.list.find(x => x.sect === d.mklink); const who = (document.getElementById('dl-who') || {}).value.trim(); S.dlWho = who; S.dlErr = '';
+    if (who.length < 2) { S.dlErr = 'Say who the link is for.'; return view(); }
+    el.disabled = true; try { const r = await rpc('hs_owner_demo_link', { sect: c.sect, label: who, days: S.days || 7 }); S.newLink = { label: who, expires: r.expires, url: demoUrl(c, r.token) }; S.dlWho = ''; }
+    catch (x) { if (x.status === 401) return route(); S.dlErr = 'Could not make the link.'; } return loadDemoLinks(); }
+  if (d.a === 'newlink') { S.newLink = null; return view(); }
+  if (d.copy) { try { await navigator.clipboard.writeText(d.copy); el.textContent = 'Copied'; } catch { el.textContent = 'Hold the link above to copy it'; } return; }
+  if (d.sendlink) { try { await navigator.share({ title: 'H&S on Command demo', text: 'Your personal H&S on Command demo (made-up data). The link works for a few days.', url: d.sendlink }); } catch {} return; }
+  if (d.endlink) { el.disabled = true; try { await rpc('hs_owner_demo_end', { id: d.endlink }); } catch (x) { if (x.status === 401) return route(); } return loadDemoLinks(); }
+  if (d.sw) { const c = S.list.find(x => x.sect === d.sw); if (c.active) { S.confirm = c.sect; return view(); } await flip(c.sect, true); return; }
+  if (d.off) return flip(d.off, false);
+  if (d.save) { const s = d.save; el.disabled = true;
+    try { await rpc('hs_owner_note', { sect: s, label: document.getElementById('lb-' + s).value, note: document.getElementById('nt-' + s).value }); S.note = 'Saved.'; return loadCompanies(); }
+    catch (x) { if (x.status === 401) return route(); el.disabled = false; el.textContent = 'Not saved: the name needs at least 2 letters'; } }
+});
+async function flip(sect, on) { S.confirm = null; try { await rpc('hs_owner_switch', { sect, active: on }); } catch (x) { if (x.status === 401) return route(); } loadCompanies(); }
+
+// back from the email link: the sign-in arrives in the address
+if (location.hash.includes('access_token=')) {
+  const q = new URLSearchParams(location.hash.slice(1));
+  keep({ access_token: q.get('access_token'), refresh_token: q.get('refresh_token'), expires_at: +q.get('expires_at') || 0, expires_in: +q.get('expires_in') || 3600 });
+  try { history.replaceState(null, '', location.pathname); } catch {}
+} else if (location.hash.includes('error=')) {
+  const q = new URLSearchParams(location.hash.slice(1)); S.err = 'The email link did not work: ' + (q.get('error_description') || q.get('error')) + '. Sign in, or create the account again.';
+  try { history.replaceState(null, '', location.pathname); } catch {}
+}
+view(); route();
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.mode === 'companies') loadCompanies(); });
 })();
 </script>
 </body>
