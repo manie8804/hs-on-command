@@ -98,6 +98,7 @@ textarea { min-height: 70px; resize: vertical; }
 const C = window.HS_CONFIG || {}, URL0 = String(C.supabaseUrl || '').replace(/\/$/, ''), KEY = C.supabaseKey || '';
 const OWNER_KEY = 'hsoc-owner-auth';   // shared with the company folders on this site
 const HOME = location.pathname.replace(/owner\/[^/]*$/, '');
+const PHONE = /iPhone|iPad|Android/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));   // the authenticator is on this device: one tap instead of a QR
 const main = document.getElementById('main');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
@@ -187,8 +188,10 @@ function view() {
   if (m === 'checkemail') { main.innerHTML = `<section class="card narrow"><h1>Check your email</h1><p>We sent a link to <b>${esc(S.email)}</b>. Open it on this phone or computer; it brings you back here to set up the 6-digit code.</p><button class="link small" data-a="tosignin">Back to sign in</button></section>`; return; }
   if (m === 'enroll') {
     main.innerHTML = `<section class="card narrow"><h1>Set up your 6-digit code</h1>
-      <p class="muted small">Install an authenticator app on your phone if you don’t have one (Google Authenticator or Microsoft Authenticator). Add an account in it by scanning this code, then type the 6 digits it shows.</p>
-      ${S.qr ? `<div class="qr"><img src="${esc(S.qr)}" alt="QR code for your authenticator app"></div><p class="small muted">Can’t scan? Type this key in the app instead:</p><p class="secret">${esc(S.secret)}</p>` : '<p class="muted">Preparing…</p>'}
+      ${!S.qr ? '<p class="muted">Preparing…</p>' : PHONE && S.uri ? `<p class="muted small">Tap the button: your phone adds H&amp;S on Command to its codes (iPhone Passwords, or Google or Microsoft Authenticator). Come back here and type the 6 digits it shows.</p>
+        <a class="btn dark" href="${esc(S.uri)}">Add to the codes on this phone</a>
+        <details class="small muted"><summary>Doing it from a computer, or the button does nothing?</summary><p>Scan this QR with your phone’s camera or authenticator app:</p><div class="qr"><img src="${esc(S.qr)}" alt="QR code for your authenticator app"></div><p>Or type this key in the app:</p><p class="secret">${esc(S.secret)}</p></details>`
+        : `<p class="muted small">Scan this QR with your phone’s camera (iPhone) or an authenticator app (Google or Microsoft Authenticator), then type the 6 digits it shows.</p><div class="qr"><img src="${esc(S.qr)}" alt="QR code for your authenticator app"></div><p class="small muted">Can’t scan? Type this key in the app instead:</p><p class="secret">${esc(S.secret)}</p>`}
       <form id="f" class="field" style="gap:12px"><label for="cd">6-digit code</label><input id="cd" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
         ${S.err ? `<p class="err small" role="alert">${esc(S.err)}</p>` : ''}<button class="btn dark" type="submit" ${S.qr ? '' : 'disabled'}>Confirm</button></form></section>`;
     document.getElementById('f').onsubmit = doEnrollVerify; if (!S.qr && !S.enrolling) doEnroll(); return;
@@ -272,7 +275,7 @@ async function doEnroll() { S.enrolling = true;
   try { const t = await token();
     for (const f of S.unverified || []) { try { await auth('/factors/' + f.id, { method: 'DELETE', token: t }); } catch {} }
     const j = await auth('/factors', { token: t, body: { factor_type: 'totp', friendly_name: 'H&S on Command owner ' + new Date().toISOString().slice(0, 16), issuer: 'H&S on Command' } });
-    S.fid = j.id; S.qr = j.totp && j.totp.qr_code; S.secret = j.totp && j.totp.secret; }
+    S.fid = j.id; S.qr = j.totp && j.totp.qr_code; S.secret = j.totp && j.totp.secret; S.uri = j.totp && j.totp.uri; }
   catch (x) { S.err = 'Could not start the code set-up: ' + x.message; }
   S.enrolling = false; view(); }
 async function verify(fid, code) { const t = await token(); const ch = await auth('/factors/' + fid + '/challenge', { token: t, body: {} });
